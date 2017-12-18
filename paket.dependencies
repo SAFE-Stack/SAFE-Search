@@ -1,0 +1,12 @@
+source https://www.nuget.org/api/v2/
+
+nuget Giraffe.Razor
+nuget Microsoft.AspNetCore.Authentication.Cookies
+nuget Microsoft.AspNetCore.Server.IISIntegration
+nuget Microsoft.AspNetCore.Server.Kestrel
+nuget Microsoft.AspNetCore.StaticFiles
+nuget Microsoft.Extensions.Logging.Console
+nuget Microsoft.Extensions.Logging.Debug
+nuget Microsoft.Azure.Search
+nuget WindowsAzure.Storage
+clitool Microsoft.DotNet.Watcher.Tools
