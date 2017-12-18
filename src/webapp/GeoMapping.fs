@@ -1,12 +1,12 @@
-module GeoMapping
+module PropertyMapper.GeoMapping
 
-open Contracts
 open Giraffe.Tasks
 open Microsoft.Azure.Search
 open Microsoft.Azure.Search.Models
 open Microsoft.Spatial
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
+open PropertyMapper.Contracts
 open System
 open System.ComponentModel.DataAnnotations
 open System.Threading.Tasks
@@ -60,7 +60,13 @@ module Searching =
     open System.Collections.Generic
     let findByDistance (geo:GeographyPoint) maxDistance =
         SearchParameters(Filter=sprintf "geo.distance(Geo, geography'POINT(%f %f)') le %d" geo.Longitude geo.Latitude maxDistance)
-    let findByTown town = SearchParameters(Filter = sprintf "TownCity eq '%s'" town)
+    let withFilter field (value:string) (parameters:SearchParameters) =
+        parameters.Filter <-
+            [ parameters.Filter; sprintf "%s eq '%s'" field (value.ToUpper()) ]
+            |> List.choose Option.ofObj
+            |> String.concat " and "
+        parameters
+
     let doSearch page (parameters:SearchParameters) = task {
         parameters.Facets <- ResizeArray [ "TownCity"; "Locality"; "District"; "County"; "Price" ]
         parameters.Skip <- Nullable(page * 50)
@@ -100,8 +106,15 @@ let findProperties request = task {
     let! findFacet, searchResults =
         match geo with
         | Some geo -> task {
+            let tryFilter field value = match value with | Some f -> withFilter field f | None -> id
             let geo = GeographyPoint.Create(geo.Lat, geo.Long)
-            let! findFacet, searchResults = findByDistance geo request.Distance |> doSearch request.Page
+            let! findFacet, searchResults =
+                findByDistance geo request.Distance
+                |> tryFilter "TownCity" request.Filter.Town
+                |> tryFilter "County" request.Filter.County
+                |> tryFilter "Locality" request.Filter.Locality
+                |> tryFilter "District" request.Filter.District
+                |> doSearch request.Page
             return findFacet, searchResults |> Array.map toSearchResult }
         | None -> Task.FromResult ((fun _ -> []), [||])
     return

@@ -1,8 +1,16 @@
-namespace Contracts
+namespace PropertyMapper.Contracts
 
 open System
 
-type FindPropertiesRequest = { Postcode : string; Distance : int; Page : int}
+[<CLIMutable>]
+type PropertyFilter =
+  { Town : string option
+    Locality : string option
+    District : string option
+    County : string option
+    MaxPrice : int option
+    MinPrice : int option }
+type FindPropertiesRequest = { Postcode : string; Distance : int; Page : int; Filter : PropertyFilter }
 type Address =
     { Building : string
       Street : string
