@@ -8,3 +8,4 @@ Giraffe.Razor
 Microsoft.DotNet.Watcher.Tools
 Microsoft.Azure.Search
 WindowsAzure.Storage
+Fable.JsonConverter

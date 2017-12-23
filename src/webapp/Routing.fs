@@ -14,7 +14,7 @@ let searchProperties (pcodeA:string, pcodeB:string, distance, page) next (ctx:Ht
               Postcode = sprintf "%s %s" (pcodeA.ToUpper()) (pcodeB.ToUpper())
               Distance = distance
               Page = page }
-    return! json properties next ctx }
+    return! FableJson.serialize properties next ctx }
 let webApp : HttpHandler =
     choose [
         GET >=>
