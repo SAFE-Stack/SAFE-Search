@@ -1,4 +1,4 @@
-module client
+module App
 
 open Fable.Core
 open Fable.Core.JsInterop
@@ -17,8 +17,11 @@ open Elmish.Debug
 
 open PropertyMapper.Contracts
 
+type SearchState = Searching | Displaying
+
 type Model =
     { Text : string
+      Status : SearchState
       Response : FindPropertiesResponse }
 
 type Msg =
@@ -32,13 +35,13 @@ let loadTransactions text =
 
 let update msg model : Model * Cmd<Msg> =
     match msg with
-    | DoSearch -> model, Cmd.ofPromise loadTransactions model.Text DisplayTransaction Error
+    | DoSearch -> { model with Status = Searching }, Cmd.ofPromise loadTransactions model.Text DisplayTransaction Error
     | SetSearch text -> { model with Text = text }, Cmd.none
-    | DisplayTransaction data -> { model with Response = data }, Cmd.none
+    | DisplayTransaction data -> { model with Response = data; Status = Displaying }, Cmd.none
     | Error _ -> model, Cmd.none
 
 let init _ =
-    let model = { Text = "HENDON"; Response = { Results = [||]; Facets = { Towns = []; Localities = []; Districts = []; Counties = []; Prices = [] } } }
+    let model = { Text = "HENDON"; Status = Displaying; Response = { Results = [||]; Facets = { Towns = []; Localities = []; Districts = []; Counties = []; Prices = [] } } }
     model, Cmd.ofMsg DoSearch
 
 open Fable.Helpers.React
@@ -56,15 +59,25 @@ let view model dispatch =
         ]        
         div [ ClassName "row" ] [
             div [ ClassName "col" ] [
-                div [ ClassName "form-group" ] [
-                    label [ HtmlFor "searchValue" ] [ str "Search for" ]
-                    input [
-                        ClassName "form-control"
-                        Id "searchValue"
-                        Placeholder "Enter Search"
-                        OnChange (fun ev -> dispatch (SetSearch !!ev.target?value)) ]
-                ]
-                button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch DoSearch) ] [ str "Search!" ]
+                yield
+                    div [ ClassName "form-group" ] [
+                        label [ HtmlFor "searchValue" ] [ str "Search for" ]
+                        input [
+                            ClassName "form-control"
+                            Id "searchValue"
+                            Placeholder "Enter Search"
+                            OnChange (fun ev -> dispatch (SetSearch !!ev.target?value))
+                            Client.Style.onEnter DoSearch dispatch ]
+                    ]
+                yield button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch DoSearch) ] [ str "Search!" ]
+                match model.Status with
+                | Searching ->
+                    yield div [ ClassName "progress"; Style [ Height "25px" ] ] [
+                      br []
+                      div [ ClassName "progress-bar progress-bar-striped progress-bar-animated"; Role "progressbar"; Style [ Width "100%" ] ] [ str "Searching..." ]
+                      br []
+                    ]
+                | Displaying -> ()
             ]
         ]
 
@@ -74,7 +87,7 @@ let view model dispatch =
                     thead [] [
                         tr [] [ toTh "Street"
                                 toTh "Town"
-                                toTh "Country"
+                                toTh "County"
                                 toTh "Date"
                                 toTh "Price" ]
                     ]
