@@ -67,10 +67,10 @@ module Searching =
             |> String.concat " and "
         parameters
 
-    let doSearch page (parameters:SearchParameters) = task {
+    let doSearch page searchText (parameters:SearchParameters) = task {
         parameters.Facets <- ResizeArray [ "TownCity"; "Locality"; "District"; "County"; "Price" ]
         parameters.Skip <- Nullable(page * 50)
-        let! searchResult = propertiesIndex.Documents.SearchAsync<SearchableProperty>("", parameters)
+        let! searchResult = propertiesIndex.Documents.SearchAsync<SearchableProperty>(searchText, parameters)
         let facets =
             searchResult.Facets
             |> Seq.map(fun x -> x.Key, x.Value |> Seq.map(fun r -> r.Value |> string) |> Seq.toList)
@@ -98,6 +98,21 @@ let toSearchResult (r:SearchableProperty) =
           PostCode = r.PostCode }
       Price = r.Price
       DateOfTransfer = r.DateOfTransfer }
+
+let toResponse findFacet results =      
+    { Results = results |> Array.map toSearchResult
+      Facets = 
+        { Towns = findFacet "TownCity"
+          Localities = findFacet "Locality"
+          Districts = findFacet "District"
+          Counties = findFacet "County"
+          Prices = findFacet "Price" } }
+let defaultParameters = SearchParameters()
+
+let findGeneric text page = task {
+    let! findFacet, searchResults = doSearch page text defaultParameters
+    return searchResults |> toResponse findFacet }
+        
 let findProperties request = task {
     let! geo =
         match validate request.Postcode with
@@ -108,20 +123,12 @@ let findProperties request = task {
         | Some geo -> task {
             let tryFilter field value = match value with | Some f -> withFilter field f | None -> id
             let geo = GeographyPoint.Create(geo.Lat, geo.Long)
-            let! findFacet, searchResults =
+            return!
                 findByDistance geo request.Distance
                 |> tryFilter "TownCity" request.Filter.Town
                 |> tryFilter "County" request.Filter.County
                 |> tryFilter "Locality" request.Filter.Locality
                 |> tryFilter "District" request.Filter.District
-                |> doSearch request.Page
-            return findFacet, searchResults |> Array.map toSearchResult }
+                |> doSearch request.Page "" }
         | None -> Task.FromResult ((fun _ -> []), [||])
-    return
-        { Results = searchResults
-          Facets = 
-            { Towns = findFacet "TownCity"
-              Localities = findFacet "Locality"
-              Districts = findFacet "District"
-              Counties = findFacet "County"
-              Prices = findFacet "Price" } } }
+    return searchResults |> toResponse findFacet }

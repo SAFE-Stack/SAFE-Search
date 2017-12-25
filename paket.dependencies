@@ -13,5 +13,9 @@ nuget Fable.Core
 nuget Fable.Import.Browser
 nuget Fable.PowerPack
 nuget Fable.JsonConverter
+nuget Fable.Elmish.Browser
+nuget Fable.Elmish.Debugger
+nuget Fable.Elmish.React
+nuget Fable.Elmish.HMR
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable

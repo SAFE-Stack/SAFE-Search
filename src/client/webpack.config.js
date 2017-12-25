@@ -10,29 +10,39 @@ var babelOptions = fableUtils.resolveBabelOptions({
   presets: [
     ["env", {
       "targets": {
-        "browsers": "> 1%"
+        "browsers": ["last 2 versions"]
       },
       "modules": false
     }]
   ],
+  plugins: ["transform-runtime"]
 });
 
+
 var isProduction = process.argv.indexOf("-p") >= 0;
+var port = process.env.SUAVE_FABLE_PORT || "8085";
 console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
 module.exports = {
   devtool: "source-map",
-  entry: resolve('client.fsproj'),
+  entry: resolve('./Client.fsproj'),
   output: {
-    filename: 'bundle.js',
     path: resolve('./public'),
+    publicPath: "/public",
+    filename: "bundle.js"
   },
   resolve: {
-    modules: [resolve("./node_modules/")]
+    modules: [ resolve("./node_modules/")]
   },
   devServer: {
-    contentBase: resolve('./public'),
-    port: 8080
+    proxy: {
+      '/api/*': {
+        target: 'http://localhost:' + port,
+        changeOrigin: true
+      }
+    },
+    hot: true,
+    inline: true
   },
   module: {
     rules: [
@@ -55,5 +65,9 @@ module.exports = {
         },
       }
     ]
-  }
+  },
+  plugins : isProduction ? [] : [
+      new webpack.HotModuleReplacementPlugin(),
+      new webpack.NamedModulesPlugin()
+  ]
 };

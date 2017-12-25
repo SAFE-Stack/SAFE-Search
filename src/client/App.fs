@@ -2,17 +2,103 @@ module client
 
 open Fable.Core
 open Fable.Core.JsInterop
-open Fable.Import
-open Fable.PowerPack
-open Fable.Import.Browser
 
-promise {
-    let! resp = Fetch.fetchAs<PropertyMapper.Contracts.FindPropertiesResponse> "http://localhost:5000/property/wd6/1fy/1" []
-    let table = document.getElementById "results"
-    for result in resp.Results do
-        let tr = document.createElement "tr"
-        let td = document.createElement "td"
-        td.textContent <- result.Address.Street
-        tr.appendChild td |> ignore
-        table.appendChild tr |> ignore
-} |> Promise.start
+open Fable.Import
+open Fable.Import.Browser
+open Fable.PowerPack
+open Fable.Helpers.React
+
+open Elmish
+open Elmish.React
+open Elmish.Browser.Navigation
+open Elmish.HMR
+open Elmish.React
+open Elmish.Debug
+
+open PropertyMapper.Contracts
+
+type Model =
+    { Text : string
+      Response : FindPropertiesResponse }
+
+type Msg =
+| SetSearch of string
+| DoSearch
+| DisplayTransaction of FindPropertiesResponse
+| Error of exn
+
+let loadTransactions text =
+    Fetch.fetchAs<FindPropertiesResponse> (sprintf "http://localhost:5000/property/find/%s" text) []
+
+let update msg model : Model * Cmd<Msg> =
+    match msg with
+    | DoSearch -> model, Cmd.ofPromise loadTransactions model.Text DisplayTransaction Error
+    | SetSearch text -> { model with Text = text }, Cmd.none
+    | DisplayTransaction data -> { model with Response = data }, Cmd.none
+    | Error _ -> model, Cmd.none
+
+let init _ =
+    let model = { Text = "HENDON"; Response = { Results = [||]; Facets = { Towns = []; Localities = []; Districts = []; Counties = []; Prices = [] } } }
+    model, Cmd.ofMsg DoSearch
+
+open Fable.Helpers.React
+open Fable.Helpers.React.Props
+
+let view model dispatch =
+    let toTh c = th [ Scope "col" ] [ str c ]
+    let toTd c = td [ Scope "row" ] [ str c ]
+
+    div [ ClassName "container" ] [
+        div [ ClassName "row" ] [
+            div [ ClassName "col" ] [
+                h1 [] [ str "Property Search"]
+            ]
+        ]        
+        div [ ClassName "row" ] [
+            div [ ClassName "col" ] [
+                div [ ClassName "form-group" ] [
+                    label [ HtmlFor "searchValue" ] [ str "Search for" ]
+                    input [
+                        ClassName "form-control"
+                        Id "searchValue"
+                        Placeholder "Enter Search"
+                        OnChange (fun ev -> dispatch (SetSearch !!ev.target?value)) ]
+                ]
+                button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch DoSearch) ] [ str "Search!" ]
+            ]
+        ]
+
+        div [ ClassName "row" ] [
+            div [ ClassName "col" ] [
+                table [ ClassName "table table-bordered table-hover" ] [
+                    thead [] [
+                        tr [] [ toTh "Street"
+                                toTh "Town"
+                                toTh "Country"
+                                toTh "Date"
+                                toTh "Price" ]
+                    ]
+                    tbody [] [
+                        for row in model.Response.Results ->
+                            tr [] [ toTd row.Address.Street
+                                    toTd row.Address.TownCity
+                                    toTd row.Address.County
+                                    toTd (string row.DateOfTransfer)
+                                    toTd (string row.Price) ]
+                    ]                
+                ]
+            ]
+        ]
+    ]
+
+JsInterop.importSideEffects "whatwg-fetch"
+JsInterop.importSideEffects "babel-polyfill"
+
+// App
+Program.mkProgram init update view
+|> Program.toNavigable (fun _ -> "#home") (fun _ m -> m, Cmd.none)
+|> Program.withConsoleTrace
+|> Program.withHMR
+|> Program.withReact "elmish-app"
+|> Program.withDebugger
+|> Program.run
