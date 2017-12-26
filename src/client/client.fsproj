@@ -6,8 +6,8 @@
     <Compile Include="Style.fs" />
     <Compile Include="../webapp/Contracts.fs" />
     <Compile Include="pages/Shared.fs" />
-    <Compile Include="pages/SearchResults.fs" />
     <Compile Include="pages/SearchBox.fs" />
+    <Compile Include="pages/SearchResults.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -34,4 +34,7 @@ type Facets =
       Districts : string list
       Counties : string list
       Prices : string list }
-type FindPropertiesResponse = { Results : PropertyResult array; Facets : Facets }
+type FindPropertiesResponse =
+  { Results : PropertyResult array
+    TotalTransactions : int option
+    Facets : Facets }

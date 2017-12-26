@@ -70,13 +70,14 @@ module Searching =
     let doSearch page searchText (parameters:SearchParameters) = task {
         parameters.Facets <- ResizeArray [ "TownCity"; "Locality"; "District"; "County"; "Price" ]
         parameters.Skip <- Nullable(page * 50)
+        parameters.IncludeTotalResultCount <- true
         let! searchResult = propertiesIndex.Documents.SearchAsync<SearchableProperty>(searchText, parameters)
         let facets =
             searchResult.Facets
             |> Seq.map(fun x -> x.Key, x.Value |> Seq.map(fun r -> r.Value |> string) |> Seq.toList)
             |> Map.ofSeq
             |> fun x -> x.TryFind >> Option.defaultValue []
-        return facets, searchResult.Results |> Seq.toArray |> Array.map(fun r -> r.Document) }
+        return facets, searchResult.Results |> Seq.toArray |> Array.map(fun r -> r.Document), searchResult.Count |> Option.ofNullable |> Option.map int }
 
 type ValidatedPostcode = { PartA : string; PartB : string }
 let validate (postcode:string) = 
@@ -99,8 +100,9 @@ let toSearchResult (r:SearchableProperty) =
       Price = r.Price
       DateOfTransfer = r.DateOfTransfer }
 
-let toResponse findFacet results =      
+let toResponse findFacet count results =      
     { Results = results |> Array.map toSearchResult
+      TotalTransactions = count
       Facets = 
         { Towns = findFacet "TownCity"
           Localities = findFacet "Locality"
@@ -110,15 +112,15 @@ let toResponse findFacet results =
 let defaultParameters = SearchParameters()
 
 let findGeneric text page = task {
-    let! findFacet, searchResults = doSearch page text defaultParameters
-    return searchResults |> toResponse findFacet }
+    let! findFacet, searchResults, count = doSearch page text defaultParameters
+    return searchResults |> toResponse findFacet count }
         
 let findProperties request = task {
     let! geo =
         match validate request.Postcode with
         | Some postcode -> AzureStorage.tryGetGeo postcode.PartA postcode.PartB
         | None -> Task.FromResult None
-    let! findFacet, searchResults =
+    let! findFacet, searchResults, count =
         match geo with
         | Some geo -> task {
             let tryFilter field value = match value with | Some f -> withFilter field f | None -> id
@@ -130,5 +132,5 @@ let findProperties request = task {
                 |> tryFilter "Locality" request.Filter.Locality
                 |> tryFilter "District" request.Filter.District
                 |> doSearch request.Page "" }
-        | None -> Task.FromResult ((fun _ -> []), [||])
-    return searchResults |> toResponse findFacet }
+        | None -> Task.FromResult ((fun _ -> []), [||], None)
+    return searchResults |> toResponse findFacet count }

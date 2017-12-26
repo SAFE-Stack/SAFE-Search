@@ -28,6 +28,7 @@ let update msg model =
                 match msg with
                 | SearchBox.SearchResults(term, results) ->
                     { SearchTerm = term
+                      TotalResults = results.TotalTransactions
                       Results = results.Results }
                 | _ -> model.SearchResultsModel
             SearchBoxModel = searchBoxModel }, cmd |> Cmd.map SearchBoxMsg                
