@@ -51,7 +51,9 @@ let loadTransactions text =
 let update msg model : Model * Cmd<Msg> =
     match msg with
     | SetSearch text -> { model with Text = SearchTerm text }, Cmd.none
-    | DoSearch (SearchTerm text as term) ->
+    | DoSearch (SearchTerm text as term) when
+        System.String.IsNullOrWhiteSpace text |> not &&
+        text.Length > 3 ->
         { model with Status = Searching; SearchingFor = term }, Cmd.ofPromise loadTransactions text (fun r -> SearchResults(term, r)) SearchError
     | SearchResults _ -> { model with Status = Displaying }, Cmd.none
     | SearchError _ -> { model with Status = Displaying }, Cmd.none

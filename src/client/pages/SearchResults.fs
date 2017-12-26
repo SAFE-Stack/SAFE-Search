@@ -13,10 +13,11 @@ let view model =
     
     div [ ClassName "container" ] [
         match model with
+        | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
         | Some { Model.Results = [||] } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
         | Some model ->
             let (SearchTerm text) = model.SearchTerm
-            yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str <| sprintf "Search Results for '%s' " text ] ] ]
+            yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str <| sprintf "Search results for %s " text ] ] ]
 
             match model.TotalResults with
             | Some count -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h6 [] [ str <| sprintf "Found %d possible matches." count ] ] ]
@@ -45,5 +46,4 @@ let view model =
                     ]
                 ]
             ]
-        | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
     ]
