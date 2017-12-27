@@ -24,7 +24,7 @@ type Msg =
 let init _ = { Text = SearchTerm.Empty; SearchingFor = SearchTerm.Empty; Status = SearchState.Displaying }
 
 let view model dispatch =
-    div [ ClassName "col" ] [
+    div [ ClassName "col border rounded m-3 p-3" ] [
         yield
             div [ ClassName "form-group" ] [
                 label [ HtmlFor "searchValue" ] [ str "Search for" ]

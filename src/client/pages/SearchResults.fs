@@ -30,7 +30,7 @@ let view model dispatch =
             ]
         ]
     
-    div [ ClassName "container-fluid" ] [
+    div [ ClassName "container-fluid border rounded m-3 p-3" ] [
         match model with
         | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
         | Some { Model.Response = { Results = [||] } } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
