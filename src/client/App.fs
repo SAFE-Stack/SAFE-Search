@@ -16,23 +16,32 @@ type Model =
 
 type Msg =
 | SearchBoxMsg of SearchBox.Msg
+| SearchResultsMsg of SearchResults.Msg
 
 let update msg model =
     match msg with
     | SearchBoxMsg msg ->
         let searchBoxModel, cmd = SearchBox.update msg model.SearchBoxModel
-        //TODO: Is this the correct way to "promote" a message to global level
-        // and transfer data between two views / components?
+
         { model with
             SearchResultsModel =
                 match msg with
                 | SearchBox.SearchCompleted(term, results) ->
                     { SearchResults.SearchTerm = term
-                      SearchResults.TotalResults = results.TotalTransactions
-                      SearchResults.Results = results.Results }
+                      SearchResults.Response = results }
                     |> Some
-                | _ -> model.SearchResultsModel
-            SearchBoxModel = searchBoxModel }, cmd |> Cmd.map SearchBoxMsg                
+                | SearchBox.SetSearch _
+                | SearchBox.DoSearch _
+                | SearchBox.SearchError _
+                | SearchBox.FilterSearch _ ->
+                    model.SearchResultsModel
+            SearchBoxModel = searchBoxModel }, cmd |> Cmd.map SearchBoxMsg
+    | SearchResultsMsg (SearchResults.Filter (facet, value)) ->
+        let searchBoxModel, searchBoxCmd =
+            let model, cmd = SearchBox.update (SearchBox.FilterSearch (facet, value)) model.SearchBoxModel
+            model, cmd |> Cmd.map SearchBoxMsg
+        { model with SearchBoxModel = searchBoxModel }, searchBoxCmd
+
 let init _ =
     let model =
         { SearchBoxModel = SearchBox.init ()
@@ -43,10 +52,10 @@ let view model dispatch =
     let toTh c = th [ Scope "col" ] [ str c ]
     let toTd c = td [ Scope "row" ] [ str c ]
 
-    div [ ClassName "container" ] [
+    div [ ClassName "container-fluid" ] [
         div [ ClassName "row" ] [ div [ ClassName "col" ] [ h1 [] [ str "Property Search" ] ] ]               
         div [ ClassName "row" ] [ Pages.SearchBox.view model.SearchBoxModel (SearchBoxMsg >> dispatch) ]                
-        div [ ClassName "row" ] [ Pages.SearchResults.view model.SearchResultsModel ]
+        div [ ClassName "row" ] [ Pages.SearchResults.view model.SearchResultsModel (SearchResultsMsg >> dispatch) ]
     ]
 
 JsInterop.importSideEffects "whatwg-fetch"

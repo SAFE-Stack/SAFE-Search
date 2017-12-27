@@ -19,6 +19,7 @@ type Msg =
     | DoSearch of SearchTerm
     | SearchCompleted of SearchTerm * SearchResponse
     | SearchError of exn
+    | FilterSearch of string * string
 
 let init _ = { Text = SearchTerm.Empty; SearchingFor = SearchTerm.Empty; Status = SearchState.Displaying }
 
@@ -46,15 +47,23 @@ let view model dispatch =
         | Displaying -> ()
     ]
 
-let loadTransactions text =
-    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s" text) []
+let findTransactions (text, filter) =
+    let filter = filter |> Option.map(fun (facet, value) -> sprintf "?%s=%s" facet value) |> Option.defaultValue ""
+    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s%s" text filter) []
+
 let update msg model : Model * Cmd<Msg> =
     match msg with
     | SetSearch text -> { model with Text = SearchTerm text }, Cmd.none
-    | DoSearch (SearchTerm text as term) when
-        System.String.IsNullOrWhiteSpace text |> not &&
-        text.Length > 3 ->
-        { model with Status = Searching; SearchingFor = term }, Cmd.ofPromise loadTransactions text (fun r -> SearchCompleted(term, r)) SearchError
-    | DoSearch _ -> { model with Status = Displaying }, Cmd.none
+    | DoSearch (SearchTerm text) when
+        System.String.IsNullOrWhiteSpace text ||
+        text.Length <= 3 -> { model with Status = Displaying }, Cmd.none
     | SearchCompleted _ -> { model with Status = Displaying }, Cmd.none
     | SearchError _ -> { model with Status = Displaying }, Cmd.none
+    | DoSearch (SearchTerm text as term) ->
+        let cmd = Cmd.ofPromise findTransactions (text, None) (fun response -> SearchCompleted(term, response)) SearchError
+        { model with Status = Searching; SearchingFor = term }, cmd
+    | FilterSearch (facet, value) ->
+        let cmd =
+            let (SearchTerm text) = model.SearchingFor
+            Cmd.ofPromise findTransactions (text, Some(facet, value)) (fun response -> SearchCompleted(model.SearchingFor, response)) SearchError
+        { model with Status = Searching; SearchingFor = model.SearchingFor }, cmd

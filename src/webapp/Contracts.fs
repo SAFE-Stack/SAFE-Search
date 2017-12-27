@@ -3,16 +3,14 @@ namespace PropertyMapper.Contracts
 open System
 
 [<CLIMutable>]
-type PropertyFilter =
-  { Town : string option
-    Locality : string option
-    District : string option
-    County : string option
+type PropertyFilterRaw =
+  { Towns : string
+    Localities : string
+    Districts : string
+    Counties : string
     MaxPrice : int option
     MinPrice : int option }
-  static member Empty = { Town = None; Locality = None; District = None; County = None; MaxPrice = None; MinPrice = None }
-type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Filter : PropertyFilter }
-type FindGenericRequest = { Text : string; Page : int; Filter : PropertyFilter }
+
 type Address =
     { Building : string
       Street : string
