@@ -3,13 +3,14 @@
     <AssemblyName>PropertyMapper</AssemblyName>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="FableJson.fs" />
+    <Compile Include="Configuration.fs" />
     <Compile Include="Models/*.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="Contracts.fs" />
-    <Compile Include="GeoMapping.fs" />
+    <Compile Include="Search.fs" />
     <Compile Include="Routing.fs" />
     <Compile Include="Program.fs" />
     <Content Include="Views/*.cshtml;WebRoot/**/*">

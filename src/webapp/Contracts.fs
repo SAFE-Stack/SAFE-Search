@@ -10,7 +10,9 @@ type PropertyFilter =
     County : string option
     MaxPrice : int option
     MinPrice : int option }
-type FindPropertiesRequest = { Postcode : string; Distance : int; Page : int; Filter : PropertyFilter }
+  static member Empty = { Town = None; Locality = None; District = None; County = None; MaxPrice = None; MinPrice = None }
+type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Filter : PropertyFilter }
+type FindGenericRequest = { Text : string; Page : int; Filter : PropertyFilter }
 type Address =
     { Building : string
       Street : string
@@ -34,7 +36,7 @@ type Facets =
       Districts : string list
       Counties : string list
       Prices : string list }
-type FindPropertiesResponse =
+type SearchResponse =
   { Results : PropertyResult array
     TotalTransactions : int option
     Facets : Facets }

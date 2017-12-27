@@ -33,3 +33,4 @@ packages/
 .paket/
 paket-files/paket.restore.cached
 /src/client/node_modules/
+/appSettings.json

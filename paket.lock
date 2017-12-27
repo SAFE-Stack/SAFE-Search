@@ -451,6 +451,10 @@ NUGET
     Microsoft.Extensions.Configuration.FileExtensions (2.0) - restriction: >= netstandard2.0
       Microsoft.Extensions.Configuration (>= 2.0) - restriction: >= netstandard2.0
       Microsoft.Extensions.FileProviders.Physical (>= 2.0) - restriction: >= netstandard2.0
+    Microsoft.Extensions.Configuration.Json (2.0)
+      Microsoft.Extensions.Configuration (>= 2.0) - restriction: >= netstandard2.0
+      Microsoft.Extensions.Configuration.FileExtensions (>= 2.0) - restriction: >= netstandard2.0
+      Newtonsoft.Json (>= 10.0.1) - restriction: >= netstandard2.0
     Microsoft.Extensions.DependencyInjection (2.0) - restriction: || (>= net461) (>= netstandard2.0)
       Microsoft.Extensions.DependencyInjection.Abstractions (>= 2.0) - restriction: >= netstandard2.0
     Microsoft.Extensions.DependencyInjection.Abstractions (2.0) - restriction: >= netstandard2.0

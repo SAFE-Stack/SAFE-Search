@@ -7,6 +7,7 @@ nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.StaticFiles
 nuget Microsoft.Extensions.Logging.Console
 nuget Microsoft.Extensions.Logging.Debug
+nuget Microsoft.Extensions.Configuration.Json
 nuget Microsoft.Azure.Search
 nuget WindowsAzure.Storage
 nuget Fable.Core

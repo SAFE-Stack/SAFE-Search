@@ -12,7 +12,7 @@ open Pages
 
 type Model =
     { SearchBoxModel : SearchBox.Model
-      SearchResultsModel : SearchResults.Model }
+      SearchResultsModel : SearchResults.Model option }
 
 type Msg =
 | SearchBoxMsg of SearchBox.Msg
@@ -26,10 +26,11 @@ let update msg model =
         { model with
             SearchResultsModel =
                 match msg with
-                | SearchBox.SearchResults(term, results) ->
-                    { SearchTerm = term
-                      TotalResults = results.TotalTransactions
-                      Results = results.Results }
+                | SearchBox.SearchCompleted(term, results) ->
+                    { SearchResults.SearchTerm = term
+                      SearchResults.TotalResults = results.TotalTransactions
+                      SearchResults.Results = results.Results }
+                    |> Some
                 | _ -> model.SearchResultsModel
             SearchBoxModel = searchBoxModel }, cmd |> Cmd.map SearchBoxMsg                
 let init _ =

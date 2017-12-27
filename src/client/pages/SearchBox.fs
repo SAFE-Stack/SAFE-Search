@@ -17,7 +17,7 @@ type Model =
 type Msg =
     | SetSearch of string
     | DoSearch of SearchTerm
-    | SearchResults of SearchTerm * FindPropertiesResponse
+    | SearchCompleted of SearchTerm * SearchResponse
     | SearchError of exn
 
 let init _ = { Text = SearchTerm.Empty; SearchingFor = SearchTerm.Empty; Status = SearchState.Displaying }
@@ -47,13 +47,14 @@ let view model dispatch =
     ]
 
 let loadTransactions text =
-    Fetch.fetchAs<FindPropertiesResponse> (sprintf "http://localhost:5000/property/find/%s" text) []
+    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s" text) []
 let update msg model : Model * Cmd<Msg> =
     match msg with
     | SetSearch text -> { model with Text = SearchTerm text }, Cmd.none
     | DoSearch (SearchTerm text as term) when
         System.String.IsNullOrWhiteSpace text |> not &&
         text.Length > 3 ->
-        { model with Status = Searching; SearchingFor = term }, Cmd.ofPromise loadTransactions text (fun r -> SearchResults(term, r)) SearchError
-    | SearchResults _ -> { model with Status = Displaying }, Cmd.none
+        { model with Status = Searching; SearchingFor = term }, Cmd.ofPromise loadTransactions text (fun r -> SearchCompleted(term, r)) SearchError
+    | DoSearch _ -> { model with Status = Displaying }, Cmd.none
+    | SearchCompleted _ -> { model with Status = Displaying }, Cmd.none
     | SearchError _ -> { model with Status = Displaying }, Cmd.none

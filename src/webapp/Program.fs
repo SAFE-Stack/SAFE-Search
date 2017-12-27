@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open Giraffe.Razor
@@ -26,11 +27,11 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 let configureCors (builder : CorsPolicyBuilder) =
     builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader() |> ignore
 
-let configureApp (app : IApplicationBuilder) =
+let configureApp config (app : IApplicationBuilder) =
     app.UseCors(configureCors)
        .UseGiraffeErrorHandler(errorHandler)
        .UseStaticFiles()
-       .UseGiraffe(webApp)
+       .UseGiraffe(webApp config)
 
 let configureServices (services : IServiceCollection) =
     let sp  = services.BuildServiceProvider()
@@ -43,10 +44,25 @@ let configureLogging (builder : ILoggingBuilder) =
     let filter (l : LogLevel) = l.Equals LogLevel.Error
     builder.AddFilter(filter).AddConsole().AddDebug() |> ignore
 
+let appConfig =
+    lazy
+        let builder =
+            ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional = true)
+                .AddEnvironmentVariables()
+                .Build()
+
+        { AzureStorage = builder.GetConnectionString "AzureStorage" |> ConnectionString
+          AzureSearch = builder.GetConnectionString "AzureSearch" |> ConnectionString
+          AzureSearchServiceName = builder.["AzureSearchName"] }
+
 [<EntryPoint>]
-let main argv =
-    let contentRoot = Directory.GetCurrentDirectory()
-    let webRoot     = Path.Combine(contentRoot, "WebRoot")
+let main _ =
+    let contentRoot  = Directory.GetCurrentDirectory()
+    let webRoot      = Path.Combine(contentRoot, "WebRoot")
+    let configureApp = configureApp appConfig.Value
+
     WebHostBuilder()
         .UseKestrel()
         .UseContentRoot(contentRoot)
