@@ -24,27 +24,28 @@ type Msg =
 let init _ = { Text = SearchTerm.Empty; SearchingFor = SearchTerm.Empty; Status = SearchState.Displaying }
 
 let view model dispatch =
-    div [ ClassName "col border rounded m-3 p-3" ] [
-        yield
-            div [ ClassName "form-group" ] [
-                label [ HtmlFor "searchValue" ] [ str "Search for" ]
-                input [
-                    ClassName "form-control"
-                    Id "searchValue"
-                    Placeholder "Enter Search"
-                    OnChange (fun ev -> dispatch (SetSearch !!ev.target?value))
-                    Client.Style.onEnter (DoSearch model.Text) dispatch ]
+    div [ ClassName "col border rounded m-3 p-3 bg-light" ] [
+        let progressBarVisibility = match model.Status with | Searching -> "visible" | Displaying -> "invisible"
+        let (SearchTerm text) = model.SearchingFor
+        yield div [ ClassName "form-group" ] [
+            label [ HtmlFor "searchValue" ] [ str "Search for" ]
+            input [
+                ClassName "form-control"
+                Id "searchValue"
+                Placeholder "Enter Search"
+                OnChange (fun ev -> dispatch (SetSearch !!ev.target?value))
+                Client.Style.onEnter (DoSearch model.Text) dispatch
             ]
+        ]
+        yield div [ ClassName "form-group" ] [
+            div [ ClassName "progress" ] [
+                div [ ClassName (sprintf "progress-bar progress-bar-striped progress-bar-animated %s" progressBarVisibility)
+                      Role "progressbar"
+                      Style [ Width "100%" ] ]
+                    [ str <| sprintf "Searching for '%s'..." text ]
+            ]
+        ]
         yield button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Text)) ] [ str "Search!" ]
-        match model.Status with
-        | Searching ->
-            let (SearchTerm text) = model.SearchingFor
-            yield div [ ClassName "progress"; Style [ Height "25px" ] ] [
-              br []
-              div [ ClassName "progress-bar progress-bar-striped progress-bar-animated"; Role "progressbar"; Style [ Width "100%" ] ] [ str <| sprintf "Searching for '%s'..." text ]
-              br []
-            ]
-        | Displaying -> ()
     ]
 
 let findTransactions (text, filter) =
