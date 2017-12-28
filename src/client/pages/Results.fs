@@ -48,7 +48,7 @@ let view model dispatch =
                         ul [ ClassName "pagination" ] [
                             let buildPager enabled content current page =
                                 li [ ClassName ("page-item" + (if enabled then "" else " disabled") + (if current then " active" else "")) ] [
-                                    a [ ClassName "page-link"; TabIndex -1.; Href "#"; OnClick (fun _ -> dispatch (ChangePage page)) ] [ str content ]
+                                    button [ ClassName "page-link"; Style [ Cursor "pointer" ]; OnClick (fun _ -> dispatch (ChangePage page)) ] [ str content ]
                                 ]
                             let currentPage = response.Page
                             let totalPages = int ((response.TotalTransactions |> Option.defaultValue 0 |> float) / 20.)
