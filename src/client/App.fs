@@ -11,41 +11,29 @@ open Fable.Helpers.React.Props
 open Pages
 
 type Model =
-    { SearchBoxModel : SearchBox.Model
-      SearchResultsModel : SearchResults.Model option }
+    { SearchModel : Search.Model
+      ResultsModel : Results.Model }
 
-type Msg =
-| SearchBoxMsg of SearchBox.Msg
-| SearchResultsMsg of SearchResults.Msg
+type AppMsg =
+| SearchMsg of Search.Msg
+| ResultsMsg of Results.Msg
 
 let update msg model =
+    let updateSearch msg model =
+        let searchModel, searchCmd = Search.update msg model.SearchModel
+        { model with SearchModel = searchModel }, Cmd.map SearchMsg searchCmd
     match msg with
-    | SearchBoxMsg msg ->
-        let searchBoxModel, cmd = SearchBox.update msg model.SearchBoxModel
-
-        { model with
-            SearchResultsModel =
-                match msg with
-                | SearchBox.SearchCompleted(term, results) ->
-                    { SearchResults.SearchTerm = term
-                      SearchResults.Response = results }
-                    |> Some
-                | SearchBox.SetSearch _
-                | SearchBox.DoSearch _
-                | SearchBox.SearchError _
-                | SearchBox.FilterSearch _ ->
-                    model.SearchResultsModel
-            SearchBoxModel = searchBoxModel }, cmd |> Cmd.map SearchBoxMsg
-    | SearchResultsMsg (SearchResults.Filter (facet, value)) ->
-        let searchBoxModel, searchBoxCmd =
-            let model, cmd = SearchBox.update (SearchBox.FilterSearch (facet, value)) model.SearchBoxModel
-            model, cmd |> Cmd.map SearchBoxMsg
-        { model with SearchBoxModel = searchBoxModel }, searchBoxCmd
+    | SearchMsg (Search.SearchCompleted(term, response) as msg) ->
+        let model, cmd = model |> updateSearch msg
+        { model with ResultsModel = Results.update (Results.DisplayResults(term, response)) model.ResultsModel }, cmd
+    | SearchMsg msg -> model |> updateSearch msg
+    | ResultsMsg (Results.FilterSet(facet, value)) -> model |> updateSearch (Search.ApplyFilter (facet, value))
+    | ResultsMsg (Results.DisplayResults _) -> model, Cmd.none
 
 let init _ =
     let model =
-        { SearchBoxModel = SearchBox.init ()
-          SearchResultsModel = SearchResults.init () }
+        { SearchModel = Search.init ()
+          ResultsModel = Results.init () }
     model, Cmd.none
 
 let view model dispatch =
@@ -54,8 +42,8 @@ let view model dispatch =
 
     div [ ClassName "container-fluid" ] [
         div [ ClassName "row" ] [ div [ ClassName "col" ] [ h1 [] [ str "Property Search" ] ] ]               
-        div [ ClassName "row" ] [ Pages.SearchBox.view model.SearchBoxModel (SearchBoxMsg >> dispatch) ]                
-        div [ ClassName "row" ] [ Pages.SearchResults.view model.SearchResultsModel (SearchResultsMsg >> dispatch) ]
+        div [ ClassName "row" ] [ Pages.Search.view model.SearchModel (SearchMsg >> dispatch) ]
+        div [ ClassName "row" ] [ Pages.Results.view model.ResultsModel (ResultsMsg >> dispatch) ]
     ]
 
 JsInterop.importSideEffects "whatwg-fetch"

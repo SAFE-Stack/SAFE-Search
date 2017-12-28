@@ -1,4 +1,4 @@
-module Pages.SearchBox
+module Pages.Search
 
 open Elmish
 open Fable.Core.JsInterop
@@ -17,9 +17,9 @@ type Model =
 type Msg =
     | SetSearch of string
     | DoSearch of SearchTerm
+    | ApplyFilter of string * string
     | SearchCompleted of SearchTerm * SearchResponse
     | SearchError of exn
-    | FilterSearch of string * string
 
 let init _ = { Text = SearchTerm.Empty; SearchingFor = SearchTerm.Empty; Status = SearchState.Displaying }
 
@@ -55,16 +55,14 @@ let findTransactions (text, filter) =
 let update msg model : Model * Cmd<Msg> =
     match msg with
     | SetSearch text -> { model with Text = SearchTerm text }, Cmd.none
-    | DoSearch (SearchTerm text) when
-        System.String.IsNullOrWhiteSpace text ||
-        text.Length <= 3 -> { model with Status = Displaying }, Cmd.none
-    | SearchCompleted _ -> { model with Status = Displaying }, Cmd.none
-    | SearchError _ -> { model with Status = Displaying }, Cmd.none
+    | DoSearch (SearchTerm text) when System.String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
     | DoSearch (SearchTerm text as term) ->
         let cmd = Cmd.ofPromise findTransactions (text, None) (fun response -> SearchCompleted(term, response)) SearchError
         { model with Status = Searching; SearchingFor = term }, cmd
-    | FilterSearch (facet, value) ->
+    | ApplyFilter (facet, value) ->
         let cmd =
             let (SearchTerm text) = model.SearchingFor
             Cmd.ofPromise findTransactions (text, Some(facet, value)) (fun response -> SearchCompleted(model.SearchingFor, response)) SearchError
         { model with Status = Searching; SearchingFor = model.SearchingFor }, cmd
+    | SearchCompleted _ -> { model with Status = Displaying }, Cmd.none
+    | SearchError _ -> model, Cmd.none
