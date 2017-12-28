@@ -26,9 +26,9 @@ let searchProperties config (pcodeA:string, pcodeB:string, distance, page) next 
               Page = page }
     return! FableJson.serialize properties next ctx }
 
-let genericSearch config text next (ctx:HttpContext) =
+let genericSearch config (text, page) next (ctx:HttpContext) =
     let request =
-        { Page = 0
+        { Page = page
           Text = text
           Filter = ctx.BindQueryString<PropertyFilterRaw>() |> ofRawFilter }
     task {
@@ -38,9 +38,9 @@ let webApp config : HttpHandler =
     choose [
         GET >=>
             choose [
+                routef "/property/find/%s/%i" (genericSearch config)
                 routef "/property/%s/%s/%i" (fun (pcodeA, pcodeB, distance) -> searchProperties config (pcodeA,pcodeB,distance,0))
                 routef "/property/%s/%s/%i/%i" (searchProperties config)
-                routef "/property/find/%s" (genericSearch config)
                 route "/" >=> razorHtmlView "Index" { Text = "Hello world, from Giraffe!" }
             ]
         setStatusCode 404 >=> text "Not Found" ]

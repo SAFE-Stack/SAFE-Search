@@ -66,7 +66,8 @@ module AzureSearch =
 
     let doSearch config page searchText (parameters:SearchParameters) = task {
         parameters.Facets <- ResizeArray [ "TownCity"; "Locality"; "District"; "County"; "Price" ]
-        parameters.Skip <- Nullable(page * 50)
+        parameters.Skip <- Nullable(page * 20)
+        parameters.Top <- Nullable 20
         parameters.IncludeTotalResultCount <- true
         let! searchResult = (propertiesIndex config).Documents.SearchAsync<SearchableProperty>(searchText, parameters)
         let facets =
@@ -76,7 +77,7 @@ module AzureSearch =
             |> fun x -> x.TryFind >> Option.defaultValue []
         return facets, searchResult.Results |> Seq.toArray |> Array.map(fun r -> r.Document), searchResult.Count |> Option.ofNullable |> Option.map int }
 
-let private toFindPropertiesResponse findFacet count results =      
+let private toFindPropertiesResponse findFacet count page results =      
     { Results =
         results
         |> Array.map(fun result ->
@@ -100,7 +101,8 @@ let private toFindPropertiesResponse findFacet count results =
           Localities = findFacet "Locality"
           Districts = findFacet "District"
           Counties = findFacet "County"
-          Prices = findFacet "Price" } }
+          Prices = findFacet "Price" }
+      Page = page }
 
 let findGeneric config request = task {
     let! findFacet, searchResults, count =
@@ -110,7 +112,7 @@ let findGeneric config request = task {
         |> withFilter "Locality" request.Filter.Localities
         |> withFilter "District" request.Filter.Districts
         |> doSearch config request.Page request.Text
-    return searchResults |> toFindPropertiesResponse findFacet count }
+    return searchResults |> toFindPropertiesResponse findFacet count request.Page }
         
 let findByPostcode config request = task {
     let! geo =
@@ -129,4 +131,4 @@ let findByPostcode config request = task {
                 |> withFilter "District" request.Filter.Districts
                 |> doSearch config request.Page "" }
         | None -> Task.FromResult ((fun _ -> []), [||], None)
-    return searchResults |> toFindPropertiesResponse findFacet count }
+    return searchResults |> toFindPropertiesResponse findFacet count request.Page }

@@ -9,6 +9,7 @@ type Model = { SearchTerm : SearchTerm option; Response : SearchResponse option 
 type Msg =
     | FilterSet of facet:string * value: string
     | DisplayResults of SearchTerm * SearchResponse
+    | ChangePage of int
 let init _ : Model = { SearchTerm = None; Response = None }
 let view model dispatch =
     let toTh c = th [ Scope "col" ] [ str c ]
@@ -43,11 +44,26 @@ let view model dispatch =
                                         toTd (string row.Price) ]
                         ]                
                     ]
+                    nav [] [
+                        ul [ ClassName "pagination" ] [
+                            let buildPager enabled content current page =
+                                li [ ClassName ("page-item" + (if enabled then "" else " disabled") + (if current then " active" else "")) ] [
+                                    a [ ClassName "page-link"; TabIndex -1.; Href "#"; OnClick (fun _ -> dispatch (ChangePage page)) ] [ str content ]
+                                ]
+                            let currentPage = response.Page
+                            let totalPages = int ((response.TotalTransactions |> Option.defaultValue 0 |> float) / 20.)
+                            yield buildPager (currentPage > 0) "Previous" false (currentPage - 1)
+                            yield!
+                                [ for page in 0 .. totalPages ->
+                                    buildPager true (string (page + 1)) (page = currentPage) page ]
+                            yield buildPager (currentPage < totalPages) "Next" false (currentPage + 1)
+                        ]
+                    ]
                 ]
             ]
     ]
 
 let update msg model : Model =
     match msg with
-    | FilterSet _ -> model
+    | FilterSet _ | ChangePage _ -> model
     | DisplayResults (term, response) -> { SearchTerm = Some term; Response = Some response }

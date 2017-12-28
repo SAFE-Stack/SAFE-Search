@@ -37,4 +37,5 @@ type Facets =
 type SearchResponse =
   { Results : PropertyResult array
     TotalTransactions : int option
+    Page : int
     Facets : Facets }
