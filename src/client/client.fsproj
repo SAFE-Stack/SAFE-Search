@@ -7,6 +7,7 @@
     <Compile Include="../webapp/Contracts.fs" />
     <Compile Include="pages/Shared.fs" />
     <Compile Include="pages/Search.fs" />
+    <Compile Include="pages/Filter.fs" />
     <Compile Include="pages/Results.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
