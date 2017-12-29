@@ -29,6 +29,7 @@ let update msg model =
     | SearchMsg msg -> model |> updateSearch msg
     | ResultsMsg (Results.FilterSet(facet, value)) -> model |> updateSearch (Search.ApplyFilter (facet, value))
     | ResultsMsg (Results.ChangePage page) -> model |> updateSearch (Search.ChangePage page)
+    | ResultsMsg (Results.SelectTransaction _ as msg) -> { model with ResultsModel = Results.update msg model.ResultsModel }, Cmd.none
     | ResultsMsg (Results.DisplayResults _) -> model, Cmd.none
 
 let init _ =

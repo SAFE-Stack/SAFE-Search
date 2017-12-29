@@ -4,18 +4,28 @@ open PropertyMapper.Contracts
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-type Model = { SearchTerm : SearchTerm option; Response : SearchResponse option }
+type Model = { SearchTerm : SearchTerm option; Response : SearchResponse option; Selected : PropertyResult option }
 
 type Msg =
     | FilterSet of facet:string * value: string
     | DisplayResults of SearchTerm * SearchResponse
     | ChangePage of int
-let init _ : Model = { SearchTerm = None; Response = None }
+    | SelectTransaction of PropertyResult
+let init _ : Model = { SearchTerm = None; Response = None; Selected = None }
+
 let view model dispatch =
     let toTh c = th [ Scope "col" ] [ str c ]
+    let toDetailsLink row c =
+        td [ Scope "row" ] [
+            a [ Href "#"
+                DataToggle "modal"
+                unbox ("data-target", "#exampleModal")
+                OnClick(fun _ -> dispatch (SelectTransaction row))
+                 ] [ str c ]
+        ]
     let toTd c = td [ Scope "row" ] [ str c ]
-    
     div [ ClassName "container-fluid border rounded m-3 p-3 bg-light" ] [
+        yield model.Selected |> Option.map Details.view |> Option.defaultValue (div [] [])
         match model with
         | { SearchTerm = None } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
         | { Model.Response = (Some { Results = [||] } | None) } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
@@ -36,12 +46,12 @@ let view model dispatch =
                         ]
                         tbody [] [
                             for row in response.Results ->
-                                tr [] [ toTd (row.Address.Building + " " + row.Address.Street)
+                                tr [] [ toDetailsLink row (row.Address.Building + " " + row.Address.Street)
                                         toTd row.Address.TownCity
                                         toTd row.Address.County
                                         toTd row.Address.PostCode
                                         toTd (row.DateOfTransfer.ToShortDateString())
-                                        toTd (string row.Price) ]
+                                        toTd (sprintf "£%s" (commaSeparate row.Price)) ]
                         ]                
                     ]
                     nav [] [
@@ -66,4 +76,5 @@ let view model dispatch =
 let update msg model : Model =
     match msg with
     | FilterSet _ | ChangePage _ -> model
-    | DisplayResults (term, response) -> { SearchTerm = Some term; Response = Some response }
+    | DisplayResults (term, response) -> { SearchTerm = Some term; Response = Some response; Selected = None }
+    | SelectTransaction transaction -> { model with Selected = Some transaction }

@@ -6,6 +6,7 @@
     <Compile Include="Style.fs" />
     <Compile Include="../webapp/Contracts.fs" />
     <Compile Include="pages/Shared.fs" />
+    <Compile Include="pages/Details.fs" />
     <Compile Include="pages/Search.fs" />
     <Compile Include="pages/Filter.fs" />
     <Compile Include="pages/Results.fs" />
