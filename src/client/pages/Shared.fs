@@ -2,8 +2,10 @@ namespace Pages
 open PropertyMapper.Contracts
 
 type SearchTerm =
-    | SearchTerm of string
-    static member Empty = SearchTerm ""
+    | Term of string
+    | Postcode of string
+    static member Empty = Term ""
+    member this.Description = match this with | Term x | Postcode x -> x
 
 [<AutoOpen>]
 module Helpers =

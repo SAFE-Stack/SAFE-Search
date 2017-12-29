@@ -12,6 +12,7 @@ type Msg =
     | DisplayResults of SearchTerm * SearchResponse
     | ChangePage of int
     | SelectTransaction of PropertyResult
+    | SetPostcode of string
 let init _ : Model = { SearchResults = None; Selected = None }
 
 let view model dispatch =
@@ -30,12 +31,17 @@ let view model dispatch =
         match model.SearchResults with
         | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
         | Some { Response = { Results = [||] } } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
-        | Some { SearchTerm = (SearchTerm text); Response = response } ->
+        | Some { SearchTerm = term; Response = response } ->
             let hits = response.TotalTransactions |> Option.map (commaSeparate >> sprintf " (%s hits)") |> Option.defaultValue ""
+            let description =
+                match term with
+                | Term term -> sprintf "Search results for '%s'%s." term hits
+                | Postcode postcode -> sprintf "Showing properties within a 1km radius of '%s'%s." postcode hits
+
             yield div [ ClassName "row" ] [
                 div [ ClassName "col-2" ] [ Pages.Filter.createFilters (FilterSet >> dispatch) response.Facets ]
                 div [ ClassName "col-10" ] [
-                    div [ ClassName "row" ] [ div [ ClassName "col" ] [ h4 [] [ str <| sprintf "Search results for '%s'%s." text hits ] ] ]
+                    div [ ClassName "row" ] [ div [ ClassName "col" ] [ h4 [] [ str description ] ] ]
                     table [ ClassName "table table-bordered table-hover" ] [
                         thead [] [
                             tr [] [ toTh "Street"
@@ -48,7 +54,7 @@ let view model dispatch =
                             for row in response.Results ->
                                 tr [] [ toDetailsLink row (row.Address.Building + " " + row.Address.Street)
                                         toTd row.Address.TownCity
-                                        toTd row.Address.PostCode
+                                        td [ Scope "row" ] [ a [ Href "#"; OnClick(fun _ -> dispatch (SetPostcode row.Address.PostCode)) ] [ str row.Address.PostCode ] ]
                                         toTd (row.DateOfTransfer.ToShortDateString())
                                         toTd (sprintf "£%s" (commaSeparate row.Price)) ]
                         ]                
@@ -77,3 +83,4 @@ let update msg model : Model =
     | FilterSet _ | ChangePage _ -> model
     | DisplayResults (term, response) -> { SearchResults = Some { SearchTerm = term; Response = response }; Selected = None }
     | SelectTransaction transaction -> { model with Selected = Some transaction }
+    | SetPostcode _ -> model

@@ -40,13 +40,12 @@ let view model dispatch =
                 Client.Style.onEnter (DoSearch model.Text) dispatch
             ]
         ]
-        let (SearchTerm text) = model.LastSearch
         yield div [ ClassName "form-group" ] [
             div [ ClassName "progress" ] [
                 div [ ClassName (sprintf "progress-bar progress-bar-striped progress-bar-animated %s" progressBarVisibility)
                       Role "progressbar"
                       Style [ Width "100%" ] ]
-                    [ str <| sprintf "Searching for '%s'..." text ]
+                    [ str <| sprintf "Searching for '%s'..." model.LastSearch.Description ]
             ]
         ]
         yield button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Text)) ] [ str "Search!" ]
@@ -56,18 +55,26 @@ let findTransactions (text, filter, page) =
     let filter = filter |> Option.map(fun (facet, value) -> sprintf "?%s=%s" facet value) |> Option.defaultValue ""
     Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s/%d%s" text page filter) []
 
+let findByPostcode (postCode, page) = 
+    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/%s/1/%d" postCode page) []
+
 let update msg model : Model * Cmd<Msg> =
-    let initiateSearch model (SearchTerm text as term) facet page =
-        let cmd = Cmd.ofPromise findTransactions (text, facet, page) (fun response -> SearchCompleted(term, response)) SearchError
+    let initiateSearch model term facet page =
+        let cmd = 
+            match term with
+            | Term text -> Cmd.ofPromise findTransactions (text, facet, page)
+            | Postcode postcode -> Cmd.ofPromise findByPostcode (postcode, page)
+        let cmd = cmd (fun response -> SearchCompleted(term, response)) SearchError
         { model with
             Status = Searching
             LastSearch = term
             Parameters = { Facet = facet; Page = page } }, cmd
     match msg with
-    | SetSearch text -> { model with Text = SearchTerm text }, Cmd.none
-    | DoSearch (SearchTerm text) when System.String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
+    | SetSearch text -> { model with Text = Term text }, Cmd.none
+    | DoSearch (Term text) when System.String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
     | DoSearch term -> initiateSearch model term None 0
     | ApplyFilter (facet, value) -> initiateSearch model model.LastSearch (Some(facet, value)) model.Parameters.Page
     | ChangePage page -> initiateSearch model model.LastSearch model.Parameters.Facet page
     | SearchCompleted _ -> { model with Status = Displaying }, Cmd.none
     | SearchError _ -> model, Cmd.none
+
