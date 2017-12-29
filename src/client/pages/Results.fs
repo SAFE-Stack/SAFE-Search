@@ -31,16 +31,15 @@ let view model dispatch =
         | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
         | Some { Response = { Results = [||] } } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
         | Some { SearchTerm = (SearchTerm text); Response = response } ->
-            let hits = response.TotalTransactions |> Option.map (sprintf "(%d hits).") |> Option.defaultValue ""
+            let hits = response.TotalTransactions |> Option.map (commaSeparate >> sprintf " (%s hits)") |> Option.defaultValue ""
             yield div [ ClassName "row" ] [
                 div [ ClassName "col-2" ] [ Pages.Filter.createFilters (FilterSet >> dispatch) response.Facets ]
                 div [ ClassName "col-10" ] [
-                    div [ ClassName "row" ] [ div [ ClassName "col" ] [ h4 [] [ str <| sprintf "Search results for '%s' %s." text hits ] ] ]
+                    div [ ClassName "row" ] [ div [ ClassName "col" ] [ h4 [] [ str <| sprintf "Search results for '%s'%s." text hits ] ] ]
                     table [ ClassName "table table-bordered table-hover" ] [
                         thead [] [
                             tr [] [ toTh "Street"
                                     toTh "Town"
-                                    toTh "County"
                                     toTh "Postcode"
                                     toTh "Date"
                                     toTh "Price" ]
@@ -49,7 +48,6 @@ let view model dispatch =
                             for row in response.Results ->
                                 tr [] [ toDetailsLink row (row.Address.Building + " " + row.Address.Street)
                                         toTd row.Address.TownCity
-                                        toTd row.Address.County
                                         toTd row.Address.PostCode
                                         toTd (row.DateOfTransfer.ToShortDateString())
                                         toTd (sprintf "£%s" (commaSeparate row.Price)) ]

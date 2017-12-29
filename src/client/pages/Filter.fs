@@ -18,9 +18,9 @@ let toFilterCard dispatch facet values =
                 div [ ClassName "card-body" ] [
                     div [ ClassName "list-group" ]
                         [ for value in values ->
-                            a [ ClassName ("list-group-item list-group-item-action")
-                                OnClick (fun _ -> dispatch (facet, value))
-                                Href "#" ]
+                            button [
+                                ClassName ("list-group-item list-group-item-action")
+                                OnClick (fun _ -> dispatch (facet, value)) ]
                               [ str value ] ]
                 ]
             ]
