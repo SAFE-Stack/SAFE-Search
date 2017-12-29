@@ -4,14 +4,15 @@ open PropertyMapper.Contracts
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
 
-type Model = { SearchTerm : SearchTerm option; Response : SearchResponse option; Selected : PropertyResult option }
+type SearchResults = { SearchTerm : SearchTerm; Response : SearchResponse }
+type Model = { SearchResults : SearchResults option; Selected : PropertyResult option }
 
 type Msg =
     | FilterSet of facet:string * value: string
     | DisplayResults of SearchTerm * SearchResponse
     | ChangePage of int
     | SelectTransaction of PropertyResult
-let init _ : Model = { SearchTerm = None; Response = None; Selected = None }
+let init _ : Model = { SearchResults = None; Selected = None }
 
 let view model dispatch =
     let toTh c = th [ Scope "col" ] [ str c ]
@@ -26,10 +27,10 @@ let view model dispatch =
     let toTd c = td [ Scope "row" ] [ str c ]
     div [ ClassName "container-fluid border rounded m-3 p-3 bg-light" ] [
         yield model.Selected |> Option.map Details.view |> Option.defaultValue (div [] [])
-        match model with
-        | { SearchTerm = None } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
-        | { Model.Response = (Some { Results = [||] } | None) } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
-        | { SearchTerm = Some (SearchTerm text); Response = Some response } ->
+        match model.SearchResults with
+        | None -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Please perform a search!" ] ] ]
+        | Some { Response = { Results = [||] } } -> yield div [ ClassName "row" ] [ div [ ClassName "col" ] [ h3 [] [ str "Your search yielded no results." ] ] ]
+        | Some { SearchTerm = (SearchTerm text); Response = response } ->
             let hits = response.TotalTransactions |> Option.map (sprintf "(%d hits).") |> Option.defaultValue ""
             yield div [ ClassName "row" ] [
                 div [ ClassName "col-2" ] [ Pages.Filter.createFilters (FilterSet >> dispatch) response.Facets ]
@@ -76,5 +77,5 @@ let view model dispatch =
 let update msg model : Model =
     match msg with
     | FilterSet _ | ChangePage _ -> model
-    | DisplayResults (term, response) -> { SearchTerm = Some term; Response = Some response; Selected = None }
+    | DisplayResults (term, response) -> { SearchResults = Some { SearchTerm = term; Response = response }; Selected = None }
     | SelectTransaction transaction -> { model with Selected = Some transaction }
