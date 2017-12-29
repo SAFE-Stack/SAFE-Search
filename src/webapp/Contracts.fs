@@ -10,6 +10,23 @@ type PropertyFilterRaw =
     Counties : string
     MaxPrice : int option
     MinPrice : int option }
+type PropertyType =
+  | Detached | SemiDetached | Terraced | FlatsMaisonettes | Other
+  member this.Description =
+    match this with
+    | PropertyType.SemiDetached -> "Semi Detatch"
+    | PropertyType.FlatsMaisonettes -> "Flats / Maisonettes"
+    | _ -> string this
+type BuildType =
+  | NewBuild | OldBuild
+  member this.Description =
+    match this with
+    | BuildType.OldBuild -> "Old Build"
+    | BuildType.NewBuild -> "New Build"
+
+type ContractType =
+  | Freehold | Leasehold
+  member this.Description = string this
 
 type Address =
     { Building : string
@@ -20,9 +37,9 @@ type Address =
       County : string
       PostCode : string }
 type BuildDetails =
-    { PropertyType : string
-      OldNew : string
-      Duration : string }
+    { PropertyType : PropertyType
+      Build : BuildType
+      Contract : ContractType }
 type PropertyResult =
     { BuildDetails : BuildDetails
       Address : Address

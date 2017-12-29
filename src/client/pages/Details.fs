@@ -5,13 +5,13 @@ open Fable.Helpers.React.Props
 open PropertyMapper.Contracts
 
 let view txn =
-    let makeField fieldId name value =
+    let field name value =
         value
         |> Option.ofObj
         |> Option.map(fun v ->
             div [ ClassName "form-group row" ] [
-                label [ HtmlFor fieldId; ClassName "col-sm-4 col-form-label" ] [ str name ]
-                div [ ClassName "col-sm-8" ] [ input [ Type "text"; ClassName "form-control-plaintext"; Id fieldId; Value v ] ]
+                label [ HtmlFor name; ClassName "col-sm-4 col-form-label" ] [ str name ]
+                div [ ClassName "col-sm-8" ] [ input [ Type "text"; ClassName "form-control-plaintext"; Id name; Value v ] ]
             ])
         |> Option.defaultValue (div [] [])
 
@@ -25,17 +25,17 @@ let view txn =
                     ]
                 ]
                 div [ ClassName "modal-body" ] [
-                    makeField "Address1" "Building / Street" (txn.Address.Building + " " + txn.Address.Street)
-                    makeField "Town" "Town" txn.Address.TownCity
-                    makeField "District" "District" txn.Address.District
-                    makeField "County" "County" txn.Address.County
-                    makeField "Locality" "Locality" txn.Address.Locality
-                    makeField "PostCode" "Post Code" txn.Address.PostCode
-                    makeField "Price" "Price" (sprintf "£%s" (txn.Price |> commaSeparate))
-                    makeField "TransferDate" "Date of Transfer" (txn.DateOfTransfer.ToShortDateString())
-                    makeField "PropertyType" "Property Type" (sprintf "%O" txn.BuildDetails.PropertyType)
-                    makeField "OldNew" "Build Type" (sprintf "%O" txn.BuildDetails.OldNew)
-                    makeField "Duration" "Contract" (sprintf "%O" txn.BuildDetails.Duration)
+                    field "Building / Street" (txn.Address.Building + " " + txn.Address.Street)
+                    field "Town" txn.Address.TownCity
+                    field "District" txn.Address.District
+                    field "County" txn.Address.County
+                    field "Locality" txn.Address.Locality
+                    field "Post Code" txn.Address.PostCode
+                    field "Price" (sprintf "£%s" (txn.Price |> commaSeparate))
+                    field "Date of Transfer" (txn.DateOfTransfer.ToShortDateString())
+                    field "Property Type" (sprintf "%s" txn.BuildDetails.PropertyType.Description)
+                    field "Build Type" (sprintf "%O" txn.BuildDetails.Build.Description)
+                    field "Contract" (sprintf "%O" txn.BuildDetails.Contract.Description)
                 ]
                 div [ ClassName "modal-footer" ] [
                     button [ Type "button"; ClassName "btn btn-primary"; unbox ("data-dismiss", "modal") ] [ str "Close" ]

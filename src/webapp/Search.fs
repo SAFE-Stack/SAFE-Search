@@ -82,9 +82,9 @@ let private toFindPropertiesResponse findFacet count page results =
         results
         |> Array.map(fun result ->
              { BuildDetails =
-                 { PropertyType = result.PropertyType |> function "D" -> "Detached" | "S" -> "Semi-Detached" | "T" -> "Terraced" | "F" -> "Flats/Maisonettes" | _ -> "Other"
-                   OldNew = result.OldNew |> function "Y" -> "New Build" | _ -> "Old Build"
-                   Duration = result.Duration |> function "F" -> "Freehold" | _ -> "Leasehold" }
+                 { PropertyType = result.PropertyType |> function "D" -> Detached | "S" -> SemiDetached | "T" -> Terraced | "F" -> FlatsMaisonettes | _ -> Other
+                   Build = result.OldNew |> function "Y" -> NewBuild | _ -> OldBuild
+                   Contract = result.Duration |> function "F" -> Freehold | _ -> Leasehold }
                Address =
                  { Building = [ result.Paon; result.Saon ] |> List.choose Option.ofObj |> String.concat ", "
                    Street = result.Street
