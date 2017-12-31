@@ -31,10 +31,10 @@ let createFilters dispatch facets =
         div [ ClassName "row" ] [ h4 [] [ str "Filters" ] ]
         div [ ClassName "row" ] [
             div [ Id "accordion"; Role "tablist" ] [
-                toFilterCard dispatch "Counties" facets.Counties
-                toFilterCard dispatch "Districts" facets.Districts
-                toFilterCard dispatch "Towns" facets.Towns
-                toFilterCard dispatch "Localities" facets.Localities
+                toFilterCard dispatch "County" facets.Counties
+                toFilterCard dispatch "District" facets.Districts
+                toFilterCard dispatch "Town" facets.Towns
+                toFilterCard dispatch "Locality" facets.Localities
             ]
         ]
     ]

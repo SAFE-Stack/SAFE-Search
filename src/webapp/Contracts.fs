@@ -3,11 +3,11 @@ namespace PropertyMapper.Contracts
 open System
 
 [<CLIMutable>]
-type PropertyFilterRaw =
-  { Towns : string
-    Localities : string
-    Districts : string
-    Counties : string
+type PropertyFilter =
+  { Town : string option
+    Locality : string option
+    District : string option
+    County : string option
     MaxPrice : int option
     MinPrice : int option }
 type PropertyType =
@@ -17,27 +17,30 @@ type PropertyType =
     | PropertyType.SemiDetached -> "Semi Detatch"
     | PropertyType.FlatsMaisonettes -> "Flats / Maisonettes"
     | _ -> string this
+  static member Parse = function "D" -> Some Detached | "S" -> Some SemiDetached | "T" -> Some Terraced | "F" -> Some FlatsMaisonettes | "O" -> Some Other | _ -> None
 type BuildType =
   | NewBuild | OldBuild
   member this.Description =
     match this with
     | BuildType.OldBuild -> "Old Build"
     | BuildType.NewBuild -> "New Build"
+  static member Parse = function "Y" -> NewBuild | _ -> OldBuild
 
 type ContractType =
   | Freehold | Leasehold
   member this.Description = string this
+  static member Parse = function "F" -> Freehold | _ -> Leasehold
 
 type Address =
     { Building : string
-      Street : string
-      Locality : string
+      Street : string option
+      Locality : string option
       TownCity : string
       District : string
       County : string
-      PostCode : string }
+      PostCode : string option }
 type BuildDetails =
-    { PropertyType : PropertyType
+    { PropertyType : PropertyType option
       Build : BuildType
       Contract : ContractType }
 type PropertyResult =

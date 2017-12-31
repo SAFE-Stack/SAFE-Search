@@ -1,3 +1,4 @@
+generate_load_scripts: true
 source https://www.nuget.org/api/v2/
 
 nuget Giraffe.Razor
@@ -10,13 +11,12 @@ nuget Microsoft.Extensions.Logging.Debug
 nuget Microsoft.Extensions.Configuration.Json
 nuget Microsoft.Azure.Search
 nuget WindowsAzure.Storage
-nuget Fable.Core
-nuget Fable.Import.Browser
-nuget Fable.PowerPack
 nuget Fable.JsonConverter
 nuget Fable.Elmish.Browser
 nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
+nuget FSharp.Data
+nuget WindowsAzure.Storage
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable

@@ -52,9 +52,9 @@ let view model dispatch =
                         ]
                         tbody [] [
                             for row in response.Results ->
-                                tr [] [ toDetailsLink row (row.Address.Building + " " + row.Address.Street)
+                                tr [] [ toDetailsLink row (row.Address.Building + " " + (row.Address.Street |> Option.defaultValue ""))
                                         toTd row.Address.TownCity
-                                        td [ Scope "row" ] [ a [ Href "#"; OnClick(fun _ -> dispatch (SetPostcode row.Address.PostCode)) ] [ str row.Address.PostCode ] ]
+                                        td [ Scope "row" ] [ a [ Href "#"; OnClick(fun _ -> row.Address.PostCode |> Option.iter(SetPostcode >> dispatch)) ] [ row.Address.PostCode |> Option.defaultValue "" |> str ] ]
                                         toTd (row.DateOfTransfer.ToShortDateString())
                                         toTd (sprintf "£%s" (commaSeparate row.Price)) ]
                         ]                

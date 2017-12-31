@@ -26,15 +26,6 @@ type SearchableProperty =
       [<IsFacetable; IsFilterable; IsSearchable>] County : string
       [<IsFilterable>] Geo : GeographyPoint }
 
-type PropertyFilter =
-  { Towns : string list
-    Localities : string list
-    Districts : string list
-    Counties : string list
-    MaxPrice : int option
-    MinPrice : int option }
-
-
 type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Filter : PropertyFilter }
 type FindGenericRequest = { Text : string; Page : int; Filter : PropertyFilter }
 
@@ -49,17 +40,10 @@ module AzureSearch =
     open System.Collections.Generic
     let findByDistance (geo:GeographyPoint) maxDistance =
         SearchParameters(Filter=sprintf "geo.distance(Geo, geography'POINT(%f %f)') le %d" geo.Longitude geo.Latitude maxDistance)
-    let withFilter field (values:string list) (parameters:SearchParameters) =
+    let withFilter (parameters:SearchParameters) (field, value:string option) =
         parameters.Filter <-
             [ (match parameters.Filter with f when String.IsNullOrWhiteSpace f -> None | f -> Some f)
-              (match values with
-               | [] -> None
-               | values ->
-                   [ for value in values -> sprintf "(%s eq '%s')" field (value.ToUpper()) ]
-                   |> String.concat " or "
-                   |> sprintf "(%s)"
-                   |> Some)
-            ]
+              (value |> Option.map(fun value -> sprintf "(%s eq '%s')" field (value.ToUpper()))) ]
             |> List.choose id
             |> String.concat " and "
         parameters
@@ -82,17 +66,17 @@ let private toFindPropertiesResponse findFacet count page results =
         results
         |> Array.map(fun result ->
              { BuildDetails =
-                 { PropertyType = result.PropertyType |> function "D" -> Detached | "S" -> SemiDetached | "T" -> Terraced | "F" -> FlatsMaisonettes | _ -> Other
-                   Build = result.OldNew |> function "Y" -> NewBuild | _ -> OldBuild
-                   Contract = result.Duration |> function "F" -> Freehold | _ -> Leasehold }
+                 { PropertyType = result.PropertyType |> PropertyType.Parse
+                   Build = result.OldNew |> BuildType.Parse
+                   Contract = result.Duration |> ContractType.Parse }
                Address =
                  { Building = [ result.Paon; result.Saon ] |> List.choose Option.ofObj |> String.concat ", "
-                   Street = result.Street
-                   Locality = result.Locality
+                   Street = result.Street |> Option.ofObj
+                   Locality = result.Locality |> Option.ofObj
                    TownCity = result.TownCity
                    District = result.District
                    County = result.County
-                   PostCode = result.PostCode }
+                   PostCode = result.PostCode |> Option.ofObj }
                Price = result.Price
                DateOfTransfer = result.DateOfTransfer })
       TotalTransactions = count
@@ -104,13 +88,17 @@ let private toFindPropertiesResponse findFacet count page results =
           Prices = findFacet "Price" }
       Page = page }
 
+let applyFilters filter parameters = 
+    [ "TownCity", filter.Town
+      "County", filter.County
+      "Locality", filter.Locality
+      "District", filter.District ]
+    |> List.fold withFilter parameters
+
 let findGeneric config request = task {
     let! findFacet, searchResults, count =
         SearchParameters()
-        |> withFilter "TownCity" request.Filter.Towns
-        |> withFilter "County" request.Filter.Counties
-        |> withFilter "Locality" request.Filter.Localities
-        |> withFilter "District" request.Filter.Districts
+        |> applyFilters request.Filter
         |> doSearch config request.Page request.Text
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
         
@@ -125,10 +113,7 @@ let findByPostcode config request = task {
             let geo = GeographyPoint.Create(geo.Lat, geo.Long)
             return!
                 findByDistance geo request.MaxDistance
-                |> withFilter "TownCity" request.Filter.Towns
-                |> withFilter "County" request.Filter.Counties
-                |> withFilter "Locality" request.Filter.Localities
-                |> withFilter "District" request.Filter.Districts
+                |> applyFilters request.Filter
                 |> doSearch config request.Page "" }
         | None -> Task.FromResult ((fun _ -> []), [||], None)
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
