@@ -2,7 +2,6 @@ module PropertyMapper.Routing
 
 open Search
 open Giraffe
-open Giraffe.Razor
 open Microsoft.AspNetCore.Http
 open PropertyMapper.Contracts
 
@@ -21,7 +20,7 @@ let genericSearch config (text, page) next (ctx:HttpContext) =
           Text = text
           Filter = ctx.BindQueryString<PropertyFilter>() }
     task {
-        let! properties = request |> findGeneric config
+        let! properties = request |> InMemorySearch.findGeneric
         return! FableJson.serialize properties next ctx }
 let webApp config : HttpHandler =
     choose [

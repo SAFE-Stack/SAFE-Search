@@ -34,8 +34,8 @@ let view txn =
                     field "Price" (Some(sprintf "£%s" (txn.Price |> commaSeparate)))
                     field "Date of Transfer" (Some (txn.DateOfTransfer.ToShortDateString()))
                     field "Property Type" (txn.BuildDetails.PropertyType |> Option.map(fun pt -> pt.Description))
-                    field "Build Type" (Some (string txn.BuildDetails.Build))
-                    field "Contract" (Some (string txn.BuildDetails.Contract))
+                    field "Build Type" (Some (string txn.BuildDetails.Build.Description))
+                    field "Contract" (Some (string txn.BuildDetails.Contract.Description))
                 ]
                 div [ ClassName "modal-footer" ] [
                     button [ Type "button"; ClassName "btn btn-primary"; unbox ("data-dismiss", "modal") ] [ str "Close" ]

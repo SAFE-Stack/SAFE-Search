@@ -17,6 +17,5 @@ nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
 nuget FSharp.Data
-nuget WindowsAzure.Storage
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable

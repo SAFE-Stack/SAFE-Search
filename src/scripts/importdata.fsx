@@ -1,8 +1,13 @@
+/// This script creates a local dataset that can be used instead of Azure Search.
+
 #load @"..\..\.paket\load\net471\FSharp.Data.fsx"
-#load @"C:\Users\Isaac\Source\Repos\houseprice-sales\src\webapp\Contracts.fs"
+      @"..\..\.paket\load\net471\Newtonsoft.Json.fsx"
+      @"..\..\.paket\load\net471\Fable.JsonConverter.fsx"
+      @"C:\Users\Isaac\Source\Repos\houseprice-sales\src\webapp\Contracts.fs"
+
+open Newtonsoft.Json
 open FSharp.Data
 open PropertyMapper.Contracts
-
 
 [<Literal>]
 let PricePaidSchema = __SOURCE_DIRECTORY__ + @"\schema.csv"
@@ -31,3 +36,11 @@ let contract =
               Contract = t.``Old/New`` |> ContractType.Parse }
           Price = t.Price
           DateOfTransfer = t.Date })
+
+module FableJson =
+    let private jsonConverter = Fable.JsonConverter() :> JsonConverter
+    let toJson value = JsonConvert.SerializeObject(value, [|jsonConverter|])
+    let ofJson (json:string) = JsonConvert.DeserializeObject<'a>(json, [|jsonConverter|])
+
+let data = contract |> FableJson.toJson
+System.IO.File.WriteAllText(__SOURCE_DIRECTORY__ + @"\..\properties.json", data)

@@ -6,10 +6,10 @@
   <ItemGroup>
     <Compile Include="FableJson.fs" />
     <Compile Include="Configuration.fs" />
-    <Compile Include="Models/*.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="Contracts.fs" />
     <Compile Include="Search.fs" />
+    <Compile Include="InMemorySearch.fs" />
     <Compile Include="Routing.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
