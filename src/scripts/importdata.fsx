@@ -12,16 +12,11 @@ open PropertyMapper.Contracts
 [<Literal>]
 let PricePaidSchema = __SOURCE_DIRECTORY__ + @"\schema.csv"
 type PricePaid = CsvProvider<PricePaidSchema, PreferOptionals = true, Schema="Date=Date">
-
-let transactions =
+let fetchData rows =
     let data = PricePaid.Load "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-monthly-update-new-version.csv"
     data.Rows
-    |> Seq.take 1000
-    |> Seq.toArray
-
-let contract =
-    transactions
-    |> Array.map(fun t ->
+    |> Seq.take rows
+    |> Seq.map(fun t ->
         { Address =
             { Building = t.PAON + (t.SAON |> Option.map (sprintf " %s") |> Option.defaultValue "")
               Street = t.Street
@@ -36,11 +31,9 @@ let contract =
               Contract = t.``Old/New`` |> ContractType.Parse }
           Price = t.Price
           DateOfTransfer = t.Date })
+    |> Seq.toArray
 
 module FableJson =
     let private jsonConverter = Fable.JsonConverter() :> JsonConverter
     let toJson value = JsonConvert.SerializeObject(value, [|jsonConverter|])
     let ofJson (json:string) = JsonConvert.DeserializeObject<'a>(json, [|jsonConverter|])
-
-let data = contract |> FableJson.toJson
-System.IO.File.WriteAllText(__SOURCE_DIRECTORY__ + @"\..\server\properties.json", data)

@@ -80,7 +80,6 @@ let view model dispatch =
 
 let update msg model : Model =
     match msg with
-    | FilterSet _ | ChangePage _ -> model
+    | FilterSet _ | ChangePage _ | SetPostcode _ -> model
     | DisplayResults (term, response) -> { SearchResults = Some { SearchTerm = term; Response = response }; Selected = None }
     | SelectTransaction transaction -> { model with Selected = Some transaction }
-    | SetPostcode _ -> model

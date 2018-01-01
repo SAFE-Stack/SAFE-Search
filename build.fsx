@@ -3,6 +3,7 @@
 // --------------------------------------------------------------------------------------
 
 #r @"packages/build/FAKE/tools/FakeLib.dll"
+#load @"src/scripts/importdata.fsx"
 
 open Fake
 open Fake.Git
@@ -117,6 +118,12 @@ Target "Run" (fun _ ->
     |> ignore
 )
 
+Target "ImportLocalData" (fun _ ->
+    let path = serverPath </> "properties.json"
+    if not (fileExists path) then
+        log "No local data exists, downloading 1000 rows of transactions data."
+        let data = Importdata.fetchData 1000 |> Importdata.FableJson.toJson
+        System.IO.File.WriteAllText(path, data))
 
 Target "BundleClient" (fun _ ->
     let result =
@@ -156,6 +163,7 @@ Target "All" DoNothing
   ==> "Build"
 
 "InstallClient"
+  ==> "ImportLocalData"
   ==> "Run"
 
 RunTargetOrDefault "Run"
