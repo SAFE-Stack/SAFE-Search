@@ -27,7 +27,7 @@ type SearchableProperty =
       [<IsFilterable>] Geo : GeographyPoint }
 
 type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Filter : PropertyFilter }
-type FindGenericRequest = { Text : string; Page : int; Filter : PropertyFilter }
+type FindGenericRequest = { Text : string option; Page : int; Filter : PropertyFilter }
 
 [<AutoOpen>]
 module Management =
@@ -53,7 +53,7 @@ module AzureSearch =
         parameters.Skip <- Nullable(page * 20)
         parameters.Top <- Nullable 20
         parameters.IncludeTotalResultCount <- true
-        let! searchResult = (propertiesIndex config).Documents.SearchAsync<SearchableProperty>(searchText, parameters)
+        let! searchResult = (propertiesIndex config).Documents.SearchAsync<SearchableProperty>(searchText |> Option.defaultValue "", parameters)
         let facets =
             searchResult.Facets
             |> Seq.map(fun x -> x.Key, x.Value |> Seq.map(fun r -> r.Value |> string) |> Seq.toList)
@@ -114,6 +114,6 @@ let findByPostcode config request = task {
             return!
                 findByDistance geo request.MaxDistance
                 |> applyFilters request.Filter
-                |> doSearch config request.Page "" }
+                |> doSearch config request.Page None }
         | None -> Task.FromResult ((fun _ -> []), [||], None)
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }

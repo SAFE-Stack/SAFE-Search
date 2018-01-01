@@ -17,7 +17,7 @@ let searchProperties config (postCode:string, distance, page) next (ctx:HttpCont
 let genericSearch config (text, page) next (ctx:HttpContext) =
     let request =
         { Page = page
-          Text = text
+          Text = if System.String.IsNullOrWhiteSpace text then None else Some text
           Filter = ctx.BindQueryString<PropertyFilter>() }
     task {
         let! properties = request |> InMemorySearch.findGeneric
