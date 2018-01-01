@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Style.fs" />
-    <Compile Include="../webapp/Contracts.fs" />
+    <Compile Include="../server/Contracts.fs" />
     <Compile Include="pages/Shared.fs" />
     <Compile Include="pages/Details.fs" />
     <Compile Include="pages/Search.fs" />

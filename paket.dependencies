@@ -19,3 +19,7 @@ nuget Fable.Elmish.HMR
 nuget FSharp.Data
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
+
+group Build
+source https://www.nuget.org/api/v2/
+nuget Fake

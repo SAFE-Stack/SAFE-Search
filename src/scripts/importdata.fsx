@@ -3,7 +3,7 @@
 #load @"..\..\.paket\load\net471\FSharp.Data.fsx"
       @"..\..\.paket\load\net471\Newtonsoft.Json.fsx"
       @"..\..\.paket\load\net471\Fable.JsonConverter.fsx"
-      @"..\webapp\Contracts.fs"
+      @"..\server\Contracts.fs"
 
 open Newtonsoft.Json
 open FSharp.Data
@@ -43,4 +43,4 @@ module FableJson =
     let ofJson (json:string) = JsonConvert.DeserializeObject<'a>(json, [|jsonConverter|])
 
 let data = contract |> FableJson.toJson
-System.IO.File.WriteAllText(__SOURCE_DIRECTORY__ + @"\..\..\properties.json", data)
+System.IO.File.WriteAllText(__SOURCE_DIRECTORY__ + @"\..\server\properties.json", data)

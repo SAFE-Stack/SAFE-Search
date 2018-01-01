@@ -31,8 +31,8 @@ let createSearch config =
     match config with
     | _ when String.IsNullOrWhiteSpace config.AzureSearchServiceName ->
         { new Search.ISearch with
-                member __.GenericSearch request = Search.InMemory.findGeneric request
-                member __.PostcodeSearch request = Search.InMemory.findByPostcode request }
+            member __.GenericSearch request = Search.InMemory.findGeneric request
+            member __.PostcodeSearch request = Search.InMemory.findByPostcode request }
     | config ->
         { new Search.ISearch with
             member __.GenericSearch request = Search.Azure.findGeneric config request
