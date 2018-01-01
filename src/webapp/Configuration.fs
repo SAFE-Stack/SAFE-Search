@@ -5,3 +5,4 @@ type Configuration =
     { AzureStorage : ConnectionString
       AzureSearch : ConnectionString
       AzureSearchServiceName : string }
+

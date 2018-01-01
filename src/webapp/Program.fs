@@ -27,6 +27,17 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 let configureCors (builder : CorsPolicyBuilder) =
     builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader() |> ignore
 
+let createSearch config =
+    match config with
+    | _ when String.IsNullOrWhiteSpace config.AzureSearchServiceName ->
+        { new Search.ISearch with
+                member __.GenericSearch request = Search.InMemory.findGeneric request
+                member __.PostcodeSearch request = Search.InMemory.findByPostcode request }
+    | config ->
+        { new Search.ISearch with
+            member __.GenericSearch request = Search.Azure.findGeneric config request
+            member __.PostcodeSearch request = Search.Azure.findByPostcode config request }        
+
 let configureApp config (app : IApplicationBuilder) =
     app.UseCors(configureCors)
        .UseGiraffeErrorHandler(errorHandler)
@@ -61,7 +72,7 @@ let appConfig =
 let main _ =
     let contentRoot  = Directory.GetCurrentDirectory()
     let webRoot      = Path.Combine(contentRoot, "WebRoot")
-    let configureApp = configureApp appConfig.Value
+    let configureApp = appConfig.Value |> createSearch |> configureApp
 
     WebHostBuilder()
         .UseKestrel()

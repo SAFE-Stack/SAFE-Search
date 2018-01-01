@@ -1,10 +1,21 @@
-module PropertyMapper.InMemorySearch
+module PropertyMapper.Search.InMemory
 
-open PropertyMapper.Search
 open PropertyMapper.Contracts
 open Giraffe.Tasks
 
 let private data = lazy ("properties.json" |> System.IO.File.ReadAllText |> FableJson.ofJson)
+
+let findByPostcode (request:FindNearestRequest) = task {
+    return    
+        { Results = [||]
+          TotalTransactions = None
+          Page = request.Page
+          Facets =
+            { Towns = []
+              Localities = []
+              Districts = []
+              Counties = []
+              Prices = [] } } }
 
 let findGeneric (request:FindGenericRequest) = task {
     let genericFilter =
