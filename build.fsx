@@ -4,11 +4,12 @@
 
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 #load @"src/scripts/importdata.fsx"
+#load @".paket\load\netstandard2.0\Build\build.group.fsx"
+#load @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
 
+open Cit.Helpers.Arm
+open Cit.Helpers.Arm.Parameters
 open Fake
-open Fake.Git
-open Fake.AssemblyInfoFile
-open Fake.ReleaseNotesHelper
 open System
 open System.IO
 
@@ -92,6 +93,43 @@ Target "BuildClient" (fun _ ->
     runDotnet clientPath "restore"
     runDotnet clientPath "fable webpack -- -p"
 )
+
+// --------------------------------------------------------------------------------------
+// Azure Deployment
+
+Target "DeployArmTemplate" <| fun _ ->
+    let armTemplate = @"src\arm-template.json"
+    let environment = getBuildParamOrDefault "environment" (Guid.NewGuid().ToString().ToLower().Split '-' |> Array.head)
+    let resourceGroupName = sprintf "safe-property-mapper-%s" environment
+
+    tracefn "Deploying template '%s' to resource group '%s'..." armTemplate resourceGroupName
+           
+    let deployment =
+        { DeploymentName = "FAKE-PropertyMapper-Deploy"
+          ResourceGroup = ResourceGroupType.New(resourceGroupName, Microsoft.Azure.Management.ResourceManager.Fluent.Core.Region.EuropeWest)
+          ArmTemplate = File.ReadAllText armTemplate
+          Parameters =
+            [ "environment", environment
+              "searchSize", getBuildParam "searchSize"
+              "webServerSize", getBuildParam "webServerSize"
+              "alwaysOn", getBuildParam "alwaysOn" ]
+            |> List.choose(fun (k, v) -> if String.IsNullOrWhiteSpace v then None else Some (k, ArmString v))
+            |> Parameters.Simple
+          DeploymentMode = Incremental }
+
+    let authCtx =
+        let authCredentials =
+            { ClientId = getBuildParam "clientId" |> Guid.Parse
+              ClientSecret = getBuildParam "clientSecret"
+              TenantId = getBuildParam "tenantId" |> Guid.Parse }
+        authenticate authCredentials (getBuildParam "subscriptionId" |> Guid.Parse)
+
+    deployment
+    |> deployWithProgress authCtx
+    |> Seq.iter(function
+    | DeploymentInProgress (state, operations) -> tracefn "State is %s, completed %d operations." state operations
+    | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
+    | DeploymentCompleted _ -> ())
 
 // --------------------------------------------------------------------------------------
 // Run the Website

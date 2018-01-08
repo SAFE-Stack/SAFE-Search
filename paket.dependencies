@@ -22,4 +22,5 @@ clitool dotnet-fable
 
 group Build
 source https://www.nuget.org/api/v2/
+github CompositionalIT/fshelpers src/FsHelpers/ArmHelper/ArmHelper.fs
 nuget Fake

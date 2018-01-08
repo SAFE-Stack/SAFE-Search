@@ -39,3 +39,4 @@ paket-files/paket.restore.cached
 /.fake/
 /src/server/appSettings.json
 /src/server/properties.json
+/paket-files/

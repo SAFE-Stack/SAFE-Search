@@ -1,0 +1,138 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "webServerSize": {
+            "type": "string",
+            "defaultValue": "F1"
+        },
+        "searchSize": {
+            "type": "string",
+            "defaultValue": "free",
+            "allowedValues": [
+                "free",
+                "basic",
+                "standard",
+                "standard2",
+                "standard3"
+            ]
+        },
+        "environment": {
+            "type": "string"
+        },
+        "alwaysOn": {
+            "type": "string",
+            "defaultValue": "Off",
+            "allowedValues": [
+                "On",
+                "Off"
+            ]
+        }
+    },
+    "variables": {
+        "appHost": "[concat('houseprice-apphost-', parameters('environment'))]",
+        "webapp": "[concat('houseprice-web-', parameters('environment'))]",
+        "storage": "[concat('housepricedata', parameters('environment'))]",
+        "search": "[concat('houseprice-search-', parameters('environment'))]",
+        "location": "West Europe"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2016-01-01",
+            "kind": "Storage",
+            "location": "[variables('location')]",
+            "name": "[variables('storage')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Search/searchServices",
+            "sku": {
+                "name": "[parameters('searchSize')]"
+            },
+            "name": "[variables('search')]",
+            "apiVersion": "2015-08-19",
+            "location": "[variables('location')]",
+            "properties": {
+                "replicaCount": 1,
+                "partitionCount": 1,
+                "hostingMode": "default"
+            },
+            "resources": [],
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "sku": {
+                "name": "[parameters('webServerSize')]"
+            },
+            "location": "[variables('location')]",
+            "name": "[variables('appHost')]",
+            "apiVersion": "2015-08-01",
+            "properties": {
+                "name": "[variables('appHost')]",
+                "numberOfWorkers": 1
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2015-08-01",
+            "dependsOn": [
+                "[concat('Microsoft.Web/serverfarms/', variables('appHost'))]",
+                "[concat('Microsoft.Storage/storageAccounts/', variables('storage'))]"
+            ],
+            "name": "[variables('webapp')]",
+            "location": "[variables('location')]",
+            "properties": {
+                "serverFarmId": "[variables('appHost')]",
+                "name": "[variables('webapp')]",
+                "siteConfig": {
+                    "connectionStrings": [
+                        {
+                            "name": "AzureStorage",
+                            "connectionString": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storage'), ';AccountKey=', listKeys(concat('Microsoft.Storage/storageAccounts/', variables('storage')), '2016-01-01').keys[0].value)]",
+                            "type": 3
+                        }
+                    ],
+                    "AlwaysOn": "[parameters('alwaysOn')]"
+                }
+            },
+            "resources": [
+                {
+                    "name": "appsettings",
+                    "apiVersion": "2015-08-01",
+                    "type": "config",
+                    "properties": {
+                        "AzureSearchName": "[variables('search')]",
+                        "AzureSearchApiKey": "[listAdminKeys(concat('Microsoft.Search/searchServices/', variables('search')), '2015-08-19').primaryKey]",
+                        "AzureStorageAccountName": "[concat('https://',variables('storage'),'.blob.core.windows.net')]"
+                    },
+                    "tags": {
+                        "displayName": "WebAppSettings"
+                    },
+                    "dependsOn": [
+                        "[concat('Microsoft.Web/sites/', variables('webapp'))]",
+                        "[concat('Microsoft.Search/searchServices/', variables('search'))]"
+                    ]
+                }
+            ]
+        }
+    ],
+    "outputs": {
+        "azureStorageConnectionString": {
+            "type": "string",
+            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storage'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts/', variables('storage')), '2016-01-01').keys[0].value)]"
+        },
+        "searchServiceName": {
+            "type": "string",
+            "value": "[variables('search')]"
+        },
+        "azureSearchAdminKey": {
+            "type": "string",
+            "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('search')), '2015-08-19').primaryKey]"
+        }
+    }
+}
