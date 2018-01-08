@@ -44,7 +44,8 @@ type BuildDetails =
       Build : BuildType
       Contract : ContractType }
 type PropertyResult =
-    { BuildDetails : BuildDetails
+    { TransactionId : Guid
+      BuildDetails : BuildDetails
       Address : Address
       Price : int
       DateOfTransfer : DateTime }

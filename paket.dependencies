@@ -16,11 +16,12 @@ nuget Fable.Elmish.Browser
 nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
-nuget FSharp.Data
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
 
 group Build
 source https://www.nuget.org/api/v2/
 github CompositionalIT/fshelpers src/FsHelpers/ArmHelper/ArmHelper.fs
+nuget FSharp.Data
+nuget FSharp.Azure.StorageTypeProvider
 nuget Fake

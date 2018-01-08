@@ -3,7 +3,7 @@
 // --------------------------------------------------------------------------------------
 
 #r @"packages/build/FAKE/tools/FakeLib.dll"
-#load @"src/scripts/importdata.fsx"
+#load @"src\scripts\importdata.fsx"
 #load @".paket\load\netstandard2.0\Build\build.group.fsx"
 #load @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
 
@@ -68,13 +68,9 @@ Target "Clean" (fun _ ->
     !!"src/**/bin" |> CleanDirs
 
     !! "src/**/obj/*.nuspec" |> DeleteFiles
+    CleanDirs ["bin"; "temp"; "docs/output"; deployDir; Path.Combine(clientPath,"public/bundle")])
 
-    CleanDirs ["bin"; "temp"; "docs/output"; deployDir; Path.Combine(clientPath,"public/bundle")]
-)
-
-Target "InstallDotNetCore" (fun _ ->
-    dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion
-)
+Target "InstallDotNetCore" (fun _ -> dotnetExePath <- DotNetCli.InstallDotNetSDK dotnetcliVersion)
 
 // --------------------------------------------------------------------------------------
 // Build library
@@ -86,13 +82,11 @@ Target "InstallClient" (fun _ ->
     run nodeTool "--version" __SOURCE_DIRECTORY__
     printfn "Yarn version:"
     run yarnTool "--version" __SOURCE_DIRECTORY__
-    run yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
-)
+    run yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__)
 
 Target "BuildClient" (fun _ ->
     runDotnet clientPath "restore"
-    runDotnet clientPath "fable webpack -- -p"
-)
+    runDotnet clientPath "fable webpack -- -p")
 
 // --------------------------------------------------------------------------------------
 // Azure Deployment
@@ -131,6 +125,32 @@ Target "DeployArmTemplate" <| fun _ ->
     | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
     | DeploymentCompleted _ -> ())
 
+// Data setup
+open Importdata
+Target "ImportLocalData" (fun _ ->
+    let path = serverPath </> "properties.json"
+    if not (fileExists path) then
+        log "No local data exists, downloading 1000 rows of transactions data."
+        let txns = fetchTransactions 1000
+        File.WriteAllText(path, FableJson.toJson txns)
+        
+        let archivePath = "ukpostcodes.zip"
+        do
+            use wc = new Net.WebClient()
+            wc.DownloadFile(Uri "https://www.freemaptools.com/download/full-postcodes/ukpostcodes.zip", archivePath)
+        archivePath |> Unzip "."
+        DeleteFile archivePath
+        
+        AzureHelper.StartStorageEmulator()
+
+        log "Now inserting post code / geo location data..."
+        let loadedPostcodes = txns |> Array.choose(fun t -> t.Address.PostCode) |> Set
+        fetchPostcodes (FullName "ukpostcodes.csv")
+        |> Array.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
+        |> insertPostcodes "UseDevelopmentStorage=true"
+        |> Array.collect snd
+        |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
+
 // --------------------------------------------------------------------------------------
 // Run the Website
 
@@ -139,8 +159,7 @@ let port = 8080
 
 FinalTarget "KillProcess" (fun _ ->
     killProcess "dotnet"
-    killProcess "dotnet.exe"
-)
+    killProcess "dotnet.exe")
 
 Target "Run" (fun _ ->
     runDotnet clientPath "restore"
@@ -153,15 +172,7 @@ Target "Run" (fun _ ->
 
     Async.Parallel [| server; fablewatch; openBrowser |]
     |> Async.RunSynchronously
-    |> ignore
-)
-
-Target "ImportLocalData" (fun _ ->
-    let path = serverPath </> "properties.json"
-    if not (fileExists path) then
-        log "No local data exists, downloading 1000 rows of transactions data."
-        let data = Importdata.fetchData 1000 |> Importdata.FableJson.toJson
-        System.IO.File.WriteAllText(path, data))
+    |> ignore)
 
 Target "BundleClient" (fun _ ->
     let result =
@@ -182,8 +193,7 @@ Target "BundleClient" (fun _ ->
     !! "src/Client/css/**/*.*" |> CopyFiles cssDir
     !! "src/Client/Images/**/*.*" |> CopyFiles imageDir
 
-    "src/Client/index.html" |> CopyFile clientDir
-)
+    "src/Client/index.html" |> CopyFile clientDir)
 
 // -------------------------------------------------------------------------------------
 Target "Build" DoNothing

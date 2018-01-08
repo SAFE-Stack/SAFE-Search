@@ -14,15 +14,14 @@ type SearchableProperty =
     { [<Key; IsFilterable>] TransactionId : string
       [<IsFacetable; IsSortable>] Price : int
       [<IsFilterable; IsSortable>] DateOfTransfer : DateTime
-      [<IsFilterable>] PostCode : string
+      PostCode : string
       [<IsFacetable; IsFilterable>] PropertyType : string
-      [<IsFacetable; IsFilterable>] OldNew : string
-      [<IsFacetable; IsFilterable>] Duration : string
-      Paon : string
-      Saon : string
+      [<IsFacetable; IsFilterable>] Build : string
+      [<IsFacetable; IsFilterable>] Contract : string
+      Building : string
       [<IsSearchable>] Street : string
       [<IsFacetable; IsFilterable; IsSearchable>] Locality : string
-      [<IsFacetable; IsFilterable; IsSearchable>] TownCity : string
+      [<IsFacetable; IsFilterable; IsSearchable>] Town : string
       [<IsFacetable; IsFilterable; IsSearchable>] District : string
       [<IsFacetable; IsFilterable; IsSearchable>] County : string
       [<IsFilterable>] Geo : GeographyPoint }
@@ -34,7 +33,7 @@ module Management =
         (new SearchServiceClient(config.AzureSearchServiceName, SearchCredentials c)).Indexes.GetClient "properties"
 
 [<AutoOpen>]
-module AzureSearch =
+module QueryBuilder =
     open System.Collections.Generic
     let findByDistance (geo:GeographyPoint) maxDistance =
         SearchParameters(Filter=sprintf "geo.distance(Geo, geography'POINT(%f %f)') le %d" geo.Longitude geo.Latitude maxDistance)
@@ -59,19 +58,39 @@ module AzureSearch =
             |> fun x -> x.TryFind >> Option.defaultValue []
         return facets, searchResult.Results |> Seq.toArray |> Array.map(fun r -> r.Document), searchResult.Count |> Option.ofNullable |> Option.map int }
 
+let insertProperties config (properties:PropertyResult list) =
+    let index = propertiesIndex config
+    properties
+    |> List.map(fun r ->
+        { TransactionId = string r.TransactionId
+          Price = r.Price
+          DateOfTransfer = r.DateOfTransfer
+          PostCode = r.Address.PostCode |> Option.toObj
+          PropertyType = r.BuildDetails.PropertyType.ToString()
+          Build = r.BuildDetails.Build.ToString()
+          Contract = r.BuildDetails.Contract.ToString()
+          Building = r.Address.Building
+          Street = r.Address.Street |> Option.toObj
+          Locality = r.Address.Locality |> Option.toObj
+          Town = r.Address.TownCity
+          District = r.Address.District
+          County = r.Address.County
+          Geo = null })
+
 let private toFindPropertiesResponse findFacet count page results =      
     { Results =
         results
         |> Array.map(fun result ->
-             { BuildDetails =
+             { TransactionId = Guid.Parse result.TransactionId
+               BuildDetails =
                  { PropertyType = result.PropertyType |> PropertyType.Parse
-                   Build = result.OldNew |> BuildType.Parse
-                   Contract = result.Duration |> ContractType.Parse }
+                   Build = result.Build |> BuildType.Parse
+                   Contract = result.Contract |> ContractType.Parse }
                Address =
-                 { Building = [ result.Paon; result.Saon ] |> List.choose Option.ofObj |> String.concat ", "
+                 { Building = result.Building
                    Street = result.Street |> Option.ofObj
                    Locality = result.Locality |> Option.ofObj
-                   TownCity = result.TownCity
+                   TownCity = result.Town
                    District = result.District
                    County = result.County
                    PostCode = result.PostCode |> Option.ofObj }
@@ -86,7 +105,7 @@ let private toFindPropertiesResponse findFacet count page results =
           Prices = findFacet "Price" }
       Page = page }
 
-let applyFilters filter parameters = 
+let applyFilters (filter:PropertyFilter) parameters = 
     [ "TownCity", filter.Town
       "County", filter.County
       "Locality", filter.Locality
