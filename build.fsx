@@ -145,11 +145,13 @@ Target "ImportLocalData" (fun _ ->
 
         log "Now inserting post code / geo location data..."
         let loadedPostcodes = txns |> Array.choose(fun t -> t.Address.PostCode) |> Set
+        
         fetchPostcodes (FullName "ukpostcodes.csv")
         |> Array.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
         |> insertPostcodes "UseDevelopmentStorage=true"
         |> Array.collect snd
         |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
+        |> logfn "%A")
 
 // --------------------------------------------------------------------------------------
 // Run the Website

@@ -68,15 +68,15 @@ open FSharp.Azure.StorageTypeProvider.Table
 
 [<Literal>]
 let AzureSchema = __SOURCE_DIRECTORY__ + @"\azure-schema.json"
-type Azure = AzureTypeProvider<"test", tableSchema = AzureSchema>
-let table = Azure.Tables.Postcodes
+type Azure = AzureTypeProvider<tableSchema = AzureSchema>
+let table = Azure.Tables.postcodes
 let insertPostcodes connectionString postcodes =
     table.AsCloudTable().CreateIfNotExists() |> ignore
     let entities =
         postcodes
         |> Seq.map(fun p ->
             let partA, partB = p.PostCode
-            Azure.Domain.PostcodesEntity(Partition partA, Row partB, p.PostCodeDescription, p.Longitude, p.Latitude))
+            Azure.Domain.postcodesEntity(Partition partA, Row partB, p.PostCodeDescription, p.Longitude, p.Latitude))
         |> Seq.toArray
     table.Insert(entities, TableInsertMode.Upsert, connectionString)
 
