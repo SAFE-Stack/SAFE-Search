@@ -19,13 +19,13 @@ let view txn =
         div [ ClassName "modal-dialog"; Role "document" ] [
             div [ ClassName "modal-content" ] [
                 div [ ClassName "modal-header" ] [
-                    h5 [ ClassName "modal-title"; Id "exampleModalLabel" ] [ str (sprintf "%s" (txn.Address.Building + " " + (txn.Address.Street |> Option.defaultValue ""))) ]
+                    h5 [ ClassName "modal-title"; Id "exampleModalLabel" ] [ str txn.Address.FirstLine ]
                     button [ Type "button"; ClassName "close"; unbox ("data-dismiss", "modal"); unbox ("aria-label", "Close") ] [
                         span [ unbox ("aria-hidden", true) ] [ str "x" ]
                     ]
                 ]
                 div [ ClassName "modal-body" ] [
-                    field "Building / Street" (Some (txn.Address.Building + " " + (txn.Address.Street |> Option.defaultValue "")))
+                    field "Building / Street" (Some txn.Address.FirstLine)
                     field "Town" (Some txn.Address.TownCity)
                     field "District" (Some txn.Address.District)
                     field "County" (Some txn.Address.County)

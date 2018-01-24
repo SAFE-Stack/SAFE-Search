@@ -20,7 +20,7 @@ let fetchTransactions rows =
     |> Seq.map(fun t ->
         { TransactionId = t.TransactionId
           Address =
-            { Building = t.PAON + (t.SAON |> Option.map (sprintf " %s") |> Option.defaultValue "")
+            { Building = [ Some t.PAON; t.SAON ] |> List.choose id |> String.concat " "
               Street = t.Street
               Locality = t.Locality
               TownCity = t.``Town/City``

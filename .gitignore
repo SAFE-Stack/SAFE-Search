@@ -41,3 +41,4 @@ paket-files/paket.restore.cached
 /src/server/properties.json
 /paket-files/
 /ukpostcodes.csv
+/src/server/*appSettings.json

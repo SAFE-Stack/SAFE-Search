@@ -39,6 +39,10 @@ type Address =
       District : string
       County : string
       PostCode : string option }
+    member address.FirstLine =
+      [ Some address.Building; address.Street ]
+      |> List.choose id
+      |> String.concat " "
 type BuildDetails =
     { PropertyType : PropertyType option
       Build : BuildType
