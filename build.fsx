@@ -2,10 +2,12 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
+#I @"C:\Users\Isaac\Source\Repos\houseprice-sales\packages\Newtonsoft.Json\lib\netstandard1.3"
+#I @"C:\Users\Isaac\Source\Repos\houseprice-sales\"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 #load @"src\scripts\importdata.fsx"
-#load @".paket\load\netstandard2.0\Build\build.group.fsx"
-#load @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
+      @".paket\load\netstandard2.0\Build\build.group.fsx"
+      @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
 
 open Cit.Helpers.Arm
 open Cit.Helpers.Arm.Parameters
@@ -66,7 +68,6 @@ do if not isWindows then
 
 Target "Clean" (fun _ ->
     !!"src/**/bin" |> CleanDirs
-
     !! "src/**/obj/*.nuspec" |> DeleteFiles
     CleanDirs ["bin"; "temp"; "docs/output"; deployDir; Path.Combine(clientPath,"public/bundle")])
 
@@ -94,7 +95,7 @@ Target "BuildClient" (fun _ ->
 Target "DeployArmTemplate" <| fun _ ->
     let armTemplate = @"src\arm-template.json"
     let environment = getBuildParamOrDefault "environment" (Guid.NewGuid().ToString().ToLower().Split '-' |> Array.head)
-    let resourceGroupName = sprintf "safe-property-mapper-%s" environment
+    let resourceGroupName = sprintf "safe-property-mapper"
 
     tracefn "Deploying template '%s' to resource group '%s'..." armTemplate resourceGroupName
            
@@ -125,33 +126,64 @@ Target "DeployArmTemplate" <| fun _ ->
     | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
     | DeploymentCompleted _ -> ())
 
-// Data setup
+
+// --------------------------------------------------------------------------------------
+// Data Import
+open PropertyMapper
 open Importdata
-Target "ImportLocalData" (fun _ ->
-    let path = serverPath </> "properties.json"
-    if not (fileExists path) then
-        log "No local data exists, downloading 1000 rows of transactions data."
-        let txns = fetchTransactions 1000
-        File.WriteAllText(path, FableJson.toJson txns)
-        
+
+let (|Local|Cloud|) (x:string) =
+    match x.ToLower() with
+    | "cloud" -> Cloud
+    | _ -> Local
+
+Target "ImportData" (fun _ ->
+    let mode = "Cloud" // getBuildParam "DataMode"
+    
+    log "Downloading transaction data..."
+    let txns = fetchTransactions 1000
+
+    // Insert postcode / geo lookup
+    log "Downloading geolocation data..."
+    if (not (fileExists (FullName "ukpostcodes.csv"))) then
         let archivePath = "ukpostcodes.zip"
         do
             use wc = new Net.WebClient()
             wc.DownloadFile(Uri "https://www.freemaptools.com/download/full-postcodes/ukpostcodes.zip", archivePath)
         archivePath |> Unzip "."
         DeleteFile archivePath
-        
-        AzureHelper.StartStorageEmulator()
 
-        log "Now inserting post code / geo location data..."
-        let loadedPostcodes = txns |> Array.choose(fun t -> t.Address.PostCode) |> Set
-        
+    let postCodes =
+        let loadedPostcodes = txns |> Array.Parallel.choose(fun t -> t.Address.PostCode) |> Set
         fetchPostcodes (FullName "ukpostcodes.csv")
         |> Array.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
-        |> insertPostcodes "UseDevelopmentStorage=true"
-        |> Array.collect snd
-        |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
-        |> logfn "%A")
+
+    let tryFindGeo = postCodes |> Seq.map(fun r -> r.PostCodeDescription, (r.Latitude, r.Longitude)) |> Map.ofSeq |> fun m -> m.TryFind
+
+    log "Now inserting property into search index..."
+    match mode with
+    | Local ->
+        let path = serverPath </> "properties.json"
+        File.WriteAllText(path, FableJson.toJson txns)
+    | Cloud ->
+        let config =
+            { AzureSearchServiceName = "houseprice-search-test"
+              AzureStorage = ConnectionString "UseDevelopmentStorage=true"
+              AzureSearch = ConnectionString "BA3120AB93A38A2C92D6B0D4CEFD1F5B" }
+        Search.Azure.Management.initialize config
+        txns
+        |> Search.Azure.insertProperties config tryFindGeo
+        |> fun t -> t.Result
+        |> logf "%A"
+
+    // Finally, insert postcodes into Azure for lookups later.
+    log "Now inserting post code / geo location data..."
+    AzureHelper.StartStorageEmulator()    
+    postCodes
+    |> insertPostcodes "UseDevelopmentStorage=true"
+    |> Array.collect snd
+    |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
+    |> logfn "%A")
 
 // --------------------------------------------------------------------------------------
 // Run the Website

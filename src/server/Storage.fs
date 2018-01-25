@@ -4,8 +4,8 @@ open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
 open PropertyMapper
 open Giraffe.Tasks
+open PropertyMapper.Search
 
-type Geo = { Lat : float; Long : float }
 let table (ConnectionString connection) =
     let tableClient =
         let connection = CloudStorageAccount.Parse connection

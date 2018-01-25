@@ -7,10 +7,10 @@
     <Compile Include="FableJson.fs" />
     <Compile Include="Contracts.fs" />
     <Compile Include="Configuration.fs" />
-    <Compile Include="Storage.fs" />
     <Compile Include="Search.fs" />
     <Compile Include="Search.InMemory.fs" />
     <Compile Include="Search.Azure.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="Routing.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

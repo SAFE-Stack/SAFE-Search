@@ -28,9 +28,23 @@ type SearchableProperty =
 
 [<AutoOpen>]
 module Management =
+    open System.Collections.Generic
+    let searchClient =
+        let connections = Dictionary()
+        fun config ->
+            if not (connections.ContainsKey config) then
+                let (ConnectionString c) = config.AzureSearch
+                connections.[config] <- new SearchServiceClient(config.AzureSearchServiceName, SearchCredentials c)
+            connections.[config]
+
     let propertiesIndex config =
-        let (ConnectionString c) = config.AzureSearch
-        (new SearchServiceClient(config.AzureSearchServiceName, SearchCredentials c)).Indexes.GetClient "properties"
+        let client = searchClient config
+        client.Indexes.GetClient "properties"
+
+    let initialize config =
+        let client = searchClient config
+        if (client.Indexes.Exists "properties") then client.Indexes.Delete "properties"
+        client.Indexes.Create(Index(Name = "properties", Fields = FieldBuilder.BuildForType<SearchableProperty>())) |> ignore
 
 [<AutoOpen>]
 module QueryBuilder =
@@ -58,15 +72,15 @@ module QueryBuilder =
             |> fun x -> x.TryFind >> Option.defaultValue []
         return facets, searchResult.Results |> Seq.toArray |> Array.map(fun r -> r.Document), searchResult.Count |> Option.ofNullable |> Option.map int }
 
-let insertProperties config (properties:PropertyResult list) =
+let insertProperties config tryGetGeo (properties:PropertyResult seq) =
     let index = propertiesIndex config
     properties
-    |> List.map(fun r ->
+    |> Seq.map(fun r ->
         { TransactionId = string r.TransactionId
           Price = r.Price
           DateOfTransfer = r.DateOfTransfer
           PostCode = r.Address.PostCode |> Option.toObj
-          PropertyType = r.BuildDetails.PropertyType.ToString()
+          PropertyType = r.BuildDetails.PropertyType |> Option.map string |> Option.toObj
           Build = r.BuildDetails.Build.ToString()
           Contract = r.BuildDetails.Contract.ToString()
           Building = r.Address.Building
@@ -75,7 +89,9 @@ let insertProperties config (properties:PropertyResult list) =
           Town = r.Address.TownCity
           District = r.Address.District
           County = r.Address.County
-          Geo = null })
+          Geo = r.Address.PostCode |> Option.bind tryGetGeo |> Option.map(fun (lat, long) -> GeographyPoint.Create(lat, long)) |> Option.toObj })
+    |> IndexBatch.Upload
+    |> index.Documents.IndexAsync
 
 let private toFindPropertiesResponse findFacet count page results =      
     { Results =
@@ -119,10 +135,10 @@ let findGeneric config request = task {
         |> doSearch config request.Page request.Text
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
         
-let findByPostcode config request = task {
+let findByPostcode config tryGetGeo request = task {
     let! geo =
         match request.Postcode.Split ' ' with
-        | [| partA; partB |] -> AzureStorage.tryGetGeo config partA partB
+        | [| partA; partB |] -> tryGetGeo config partA partB
         | _ -> Task.FromResult None
     let! findFacet, searchResults, count =
         match geo with

@@ -1,10 +1,16 @@
 /// This script creates a local dataset that can be used instead of Azure Search.
 
 #I @"C:\Users\Isaac\Source\Repos\houseprice-sales\"
-#load @".paket\load\net461\FSharp.Data.fsx"
+#load @"net461\FSharp.Data.fsx"
       @"packages\build\FSharp.Azure.StorageTypeProvider\StorageTypeProvider.fsx"
-      @".paket\load\netstandard2.0\Fable.JsonConverter.fsx"
+      @"netstandard2.0\Fable.JsonConverter.fsx"
       @"src\server\Contracts.fs"
+      @"netstandard2.0\Giraffe.fsx"
+      @"netstandard2.0\Microsoft.Azure.Search.fsx"
+      @"netstandard2.0\System.ComponentModel.Annotations.fsx"
+      @"src\server\Configuration.fs"
+      @"src\server\Search.fs"
+      @"src\server\Search.Azure.fs"
 
 open FSharp.Data
 open Newtonsoft.Json
