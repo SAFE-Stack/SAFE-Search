@@ -138,7 +138,7 @@ let (|Local|Cloud|) (x:string) =
     | _ -> Local
 
 Target "ImportData" (fun _ ->
-    let mode = "Cloud" // getBuildParam "DataMode"
+    let mode = getBuildParam "DataMode"
     
     log "Downloading transaction data..."
     let txns = fetchTransactions 1000
@@ -159,31 +159,34 @@ Target "ImportData" (fun _ ->
         |> Array.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
 
     let tryFindGeo = postCodes |> Seq.map(fun r -> r.PostCodeDescription, (r.Latitude, r.Longitude)) |> Map.ofSeq |> fun m -> m.TryFind
+    let insertPostcodeLookup (ConnectionString connectionString) =
+        postCodes
+        |> insertPostcodes connectionString
+        |> Array.collect snd
+        |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
+        |> logfn "%A"
 
-    log "Now inserting property into search index..."
+    log "Now inserting property transactions into search index and creating postcode lookup..."
     match mode with
     | Local ->
         let path = serverPath </> "properties.json"
         File.WriteAllText(path, FableJson.toJson txns)
+        AzureHelper.StartStorageEmulator()
+        insertPostcodeLookup (ConnectionString "UseDevelopmentStorage=true")
+
     | Cloud ->
         let config =
-            { AzureSearchServiceName = "houseprice-search-test"
-              AzureStorage = ConnectionString "UseDevelopmentStorage=true"
-              AzureSearch = ConnectionString "BA3120AB93A38A2C92D6B0D4CEFD1F5B" }
+            { AzureSearchServiceName = ""
+              AzureStorage = ConnectionString ""
+              AzureSearch = ConnectionString "" }
+
         Search.Azure.Management.initialize config
         txns
         |> Search.Azure.insertProperties config tryFindGeo
         |> fun t -> t.Result
         |> logf "%A"
 
-    // Finally, insert postcodes into Azure for lookups later.
-    log "Now inserting post code / geo location data..."
-    AzureHelper.StartStorageEmulator()    
-    postCodes
-    |> insertPostcodes "UseDevelopmentStorage=true"
-    |> Array.collect snd
-    |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
-    |> logfn "%A")
+        insertPostcodeLookup config.AzureStorage)
 
 // --------------------------------------------------------------------------------------
 // Run the Website
