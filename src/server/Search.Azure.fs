@@ -60,11 +60,12 @@ module QueryBuilder =
         parameters
 
     let doSearch config page searchText (parameters:SearchParameters) = task {
-        parameters.Facets <- ResizeArray [ "TownCity"; "Locality"; "District"; "County"; "Price" ]
+        let searchText = searchText |> Option.map(fun searchText -> searchText + "*") |> Option.defaultValue ""
+        parameters.Facets <- ResizeArray [ "Town"; "Locality"; "District"; "County"; "Price" ]
         parameters.Skip <- Nullable(page * 20)
         parameters.Top <- Nullable 20
         parameters.IncludeTotalResultCount <- true
-        let! searchResult = (propertiesIndex config).Documents.SearchAsync<SearchableProperty>(searchText |> Option.defaultValue "", parameters)
+        let! searchResult = (propertiesIndex config).Documents.SearchAsync<SearchableProperty>(searchText, parameters)
         let facets =
             searchResult.Facets
             |> Seq.map(fun x -> x.Key, x.Value |> Seq.map(fun r -> r.Value |> string) |> Seq.toList)
