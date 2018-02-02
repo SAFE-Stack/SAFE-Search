@@ -2,8 +2,7 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
-#I @"C:\Users\Isaac\Source\Repos\houseprice-sales\packages\Newtonsoft.Json\lib\netstandard1.3"
-#I @"C:\Users\Isaac\Source\Repos\houseprice-sales\"
+#I @".\packages\Newtonsoft.Json\lib\netstandard1.3"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 #load @"src\scripts\importdata.fsx"
       @".paket\load\netstandard2.0\Build\build.group.fsx"
