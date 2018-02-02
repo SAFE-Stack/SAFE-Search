@@ -2,7 +2,7 @@
 
 #I @"..\.."
 #I @"..\..\.paket\load\"
-#load @"net461\FSharp.Data.fsx"
+#load @"net461\Build\FSharp.Data.fsx"
       @"packages\build\FSharp.Azure.StorageTypeProvider\StorageTypeProvider.fsx"
       @"netstandard2.0\Fable.JsonConverter.fsx"
       @"src\server\Contracts.fs"
