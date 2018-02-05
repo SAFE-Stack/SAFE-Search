@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2027
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "client", "src\client\client.fsproj", "{8A7FB08D-11BF-4EFC-AF2F-5C0B5CFF1BF0}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "server", "src\server\server.fsproj", "{666F1FE8-BB94-4BB5-BF63-8B90AAB41AD3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CB4357BB-47B5-47D5-9143-40B5C6785A4C}"
+	ProjectSection(SolutionItems) = preProject
+		build.fsx = build.fsx
+		src\scripts\importdata.fsx = src\scripts\importdata.fsx
+		paket.dependencies = paket.dependencies
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A7FB08D-11BF-4EFC-AF2F-5C0B5CFF1BF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A7FB08D-11BF-4EFC-AF2F-5C0B5CFF1BF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A7FB08D-11BF-4EFC-AF2F-5C0B5CFF1BF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A7FB08D-11BF-4EFC-AF2F-5C0B5CFF1BF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{666F1FE8-BB94-4BB5-BF63-8B90AAB41AD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{666F1FE8-BB94-4BB5-BF63-8B90AAB41AD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{666F1FE8-BB94-4BB5-BF63-8B90AAB41AD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{666F1FE8-BB94-4BB5-BF63-8B90AAB41AD3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6AA64DCF-9BA6-4D4C-8190-0B41AC4D4BC7}
+	EndGlobalSection
+EndGlobal
