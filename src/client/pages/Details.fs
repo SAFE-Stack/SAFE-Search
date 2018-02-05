@@ -11,7 +11,7 @@ let private content txn =
         |> Option.map(fun v ->
             div [ ClassName "form-group row" ] [
                 label [ HtmlFor name; ClassName "col-sm-4 col-form-label" ] [ str name ]
-                div [ ClassName "col-sm-8" ] [ input [ Type "text"; ClassName "form-control-plaintext"; Id name; Value v ] ]
+                div [ ClassName "col-sm-8" ] [ input [ Type "text"; ClassName "form-control-plaintext"; Id name; Value v; ReadOnly true ] ]
             ])
         |> Option.defaultValue (div [] [])
 
