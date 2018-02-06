@@ -3,12 +3,6 @@ source https://www.nuget.org/api/v2/
 
 nuget Giraffe.Razor
 nuget Microsoft.AspNetCore.Authentication.Cookies
-nuget Microsoft.AspNetCore.Server.IISIntegration
-nuget Microsoft.AspNetCore.Server.Kestrel
-nuget Microsoft.AspNetCore.StaticFiles
-nuget Microsoft.Extensions.Logging.Console
-nuget Microsoft.Extensions.Logging.Debug
-nuget Microsoft.Extensions.Configuration.Json
 nuget Microsoft.Azure.Search
 nuget WindowsAzure.Storage
 nuget Fable.JsonConverter
@@ -16,6 +10,7 @@ nuget Fable.Elmish.Browser
 nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
+nuget Saturn
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
 

@@ -1,12 +1,7 @@
 Fable.JsonConverter
 Giraffe.Razor
 Microsoft.AspNetCore.Authentication.Cookies
-Microsoft.AspNetCore.Server.Kestrel
-Microsoft.AspNetCore.Server.IISIntegration
-Microsoft.AspNetCore.StaticFiles
 Microsoft.Azure.Search
 Microsoft.DotNet.Watcher.Tools
-Microsoft.Extensions.Configuration.Json
-Microsoft.Extensions.Logging.Console
-Microsoft.Extensions.Logging.Debug
 WindowsAzure.Storage
+Saturn
