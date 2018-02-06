@@ -6,8 +6,8 @@ open Microsoft.Extensions.Configuration
 open Giraffe
 
 module Config =
-    let appConfig =
-        lazy
+    let createSearchEngine() =
+        let appConfig =
             let builder =
                 ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
@@ -17,8 +17,8 @@ module Config =
             { AzureStorage = builder.GetConnectionString "AzureStorage" |> ConnectionString
               AzureSearch = builder.GetConnectionString "AzureSearch" |> ConnectionString
               AzureSearchServiceName = builder.["AzureSearchName"] }
-    let createSearchEngine() =
-        match appConfig.Value with
+
+        match appConfig with
         | appConfig when String.IsNullOrWhiteSpace appConfig.AzureSearchServiceName ->
             { new Search.ISearchEngine with
                 member __.GenericSearch request = Search.InMemory.findGeneric request
