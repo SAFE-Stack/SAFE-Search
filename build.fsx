@@ -4,6 +4,7 @@
 
 #I @".\packages\Newtonsoft.Json\lib\netstandard1.3"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
+#r @"packages/build/Microsoft.Rest.ClientRuntime.Azure/lib/netstandard1.4/Microsoft.Rest.ClientRuntime.Azure.dll"
 #load @"src\scripts\importdata.fsx"
       @".paket\load\netstandard2.0\Build\build.group.fsx"
       @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
@@ -13,6 +14,9 @@ open Cit.Helpers.Arm.Parameters
 open Fake
 open System
 open System.IO
+open Microsoft.IdentityModel.Clients.ActiveDirectory
+open Microsoft.Azure.Management.ResourceManager.Fluent
+open Microsoft.Azure.Management.ResourceManager.Fluent.Core
 
 let project = "Property Mapper"
 let summary = "A project to illustrate use of Azure Search to map UK property sales using SAFE."
@@ -117,6 +121,39 @@ Target "DeployArmTemplate" <| fun _ ->
               ClientSecret = getBuildParam "clientSecret"
               TenantId = getBuildParam "tenantId" |> Guid.Parse }
         authenticate authCredentials (getBuildParam "subscriptionId" |> Guid.Parse)
+
+    deployment
+    |> deployWithProgress authCtx
+    |> Seq.iter(function
+    | DeploymentInProgress (state, operations) -> tracefn "State is %s, completed %d operations." state operations
+    | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
+    | DeploymentCompleted _ -> ())
+
+Target "DeployArmTemplateLocal" <| fun _ ->
+    let armTemplate = @"src\arm-template.json"
+    let environment = getBuildParamOrDefault "environment" (Guid.NewGuid().ToString().ToLower().Split '-' |> Array.head)
+    let resourceGroupName = sprintf "safe-property-mapper-%s" environment
+    let authCtx = 
+        let client = new AuthenticationContext("https://login.microsoftonline.com/common")
+        async {
+            let! deviceResult = client.AcquireDeviceCodeAsync("https://management.core.windows.net/", "84edda74-cb5b-49e3-99b3-82d1c419e651") |> Async.AwaitTask
+            printfn "%s" deviceResult.Message
+            let! tokenResult = client.AcquireTokenByDeviceCodeAsync(deviceResult) |> Async.AwaitTask
+            let client = RestClient.Configure().WithEnvironment(AzureEnvironment.AzureGlobalCloud).WithCredentials(Microsoft.Rest.TokenCredentials(tokenResult.AccessToken)).Build()
+            return ResourceManager.Authenticate(client).WithSubscription(getBuildParam "subscriptionId") |> AuthenticatedContext } |> Async.RunSynchronously
+
+    let deployment =
+        { DeploymentName = "FAKE-PropertyMapper-Deploy"
+          ResourceGroup = ResourceGroupType.New(resourceGroupName, Microsoft.Azure.Management.ResourceManager.Fluent.Core.Region.EuropeWest)
+          ArmTemplate = File.ReadAllText armTemplate
+          Parameters =
+            [ "environment", environment
+              "searchSize", getBuildParam "searchSize"
+              "webServerSize", getBuildParam "webServerSize"
+              "alwaysOn", getBuildParam "alwaysOn" ]
+            |> List.choose(fun (k, v) -> if String.IsNullOrWhiteSpace v then None else Some (k, ArmString v))
+            |> Parameters.Simple
+          DeploymentMode = Incremental }
 
     deployment
     |> deployWithProgress authCtx
