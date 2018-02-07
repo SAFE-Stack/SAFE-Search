@@ -7,6 +7,6 @@ type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Fi
 type FindGenericRequest = { Text : string option; Page : int; Filter : PropertyFilter }
 type Geo = { Lat : float; Long : float }
 
-type ISearch =
+type ISearchEngine =
     abstract GenericSearch : FindGenericRequest -> SearchResponse Task
     abstract PostcodeSearch : FindNearestRequest -> SearchResponse Task

@@ -80,7 +80,7 @@ let viewResults searchResults dispatch =
                                         toTd row.Address.TownCity
                                         td [ Scope "row" ] [ postcodeLink ]
                                         toTd (row.DateOfTransfer.ToShortDateString())
-                                        toTd (sprintf "£%s" (commaSeparate row.Price)) ]
+                                        toTd (sprintf "Â£%s" (commaSeparate row.Price)) ]
                         ]
                     ]
                     nav [] [
