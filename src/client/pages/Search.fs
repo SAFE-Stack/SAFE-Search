@@ -105,7 +105,7 @@ let viewResults searchResults dispatch =
 let view model dispatch =
     let progressBarVisibility = match model.Status with | Searching -> "visible" | Displaying -> "invisible"
     div [ ClassName "col" ] [
-        yield! model.Selected |> function Some property -> [ Details.view property ] | None -> []
+        yield Details.view model.Selected
         yield div [ ClassName "border rounded m-3 p-3 bg-light" ] [
             div [ ClassName "form-group" ] [
                 label [ HtmlFor "searchValue" ] [ str "Search for" ]
