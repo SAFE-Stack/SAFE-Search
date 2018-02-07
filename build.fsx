@@ -140,11 +140,11 @@ Target "ImportData" (fun _ ->
     let mode = getBuildParam "DataMode"
     
     log "Downloading transaction data..."
-    let txns = fetchTransactions 1000
 
     // Insert postcode / geo lookup
-    log "Downloading geolocation data..."
     if (not (fileExists (FullName "ukpostcodes.csv"))) then
+        let txns = fetchTransactions 1000
+        log "Downloading geolocation data..."
         let archivePath = "ukpostcodes.zip"
         do
             use wc = new Net.WebClient()

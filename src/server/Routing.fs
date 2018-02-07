@@ -22,6 +22,7 @@ let genericSearch (searcher:Search.ISearch) (text, page) next (ctx:HttpContext) 
     task {
         let! properties = searcher.GenericSearch request
         return! FableJson.serialize properties next ctx }
+
 let webApp searcher : HttpHandler =
     choose [
         GET >=>
@@ -31,4 +32,3 @@ let webApp searcher : HttpHandler =
                 routef "/property/%s/%i" (fun (postcode, distance) -> searchProperties searcher (postcode, distance, 0))
             ]
         setStatusCode 404 >=> text "Not Found" ]
-

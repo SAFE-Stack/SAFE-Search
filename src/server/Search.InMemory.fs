@@ -2,6 +2,7 @@ module PropertyMapper.Search.InMemory
 
 open PropertyMapper.Contracts
 open Giraffe.Tasks
+open System
 
 let private data = lazy ("properties.json" |> System.IO.File.ReadAllText |> FableJson.ofJson)
 
@@ -15,7 +16,7 @@ let findByPostcode (request:FindNearestRequest) = task {
               Localities = []
               Districts = []
               Counties = []
-              Prices = [] } } }
+              PriceRanges = [] } } }
 
 let findGeneric (request:FindGenericRequest) = task {
     let genericFilter =
@@ -31,7 +32,7 @@ let findGeneric (request:FindGenericRequest) = task {
         | None -> fun _ -> true
     let facetFilter filter mapper =
         match filter with
-        | Some filter -> mapper >> fun (s:string) -> s.ToUpper() = filter
+        | Some filter -> mapper >> fun s -> String.Equals(s, filter, StringComparison.OrdinalIgnoreCase)
         | None -> fun _ -> true
 
     let matches =
@@ -41,7 +42,8 @@ let findGeneric (request:FindGenericRequest) = task {
         |> Array.filter (facetFilter request.Filter.District (fun r -> r.Address.District))
         |> Array.filter (facetFilter request.Filter.Locality (fun r -> r.Address.Locality |> Option.defaultValue ""))
         |> Array.filter (facetFilter request.Filter.Town (fun r -> r.Address.TownCity))
-            
+        |> Array.filter (facetFilter request.Filter.``Price range`` (fun r -> r.PriceRange.Description))
+    
     let getFacets mapper = Array.choose mapper >> Array.distinct >> Array.truncate 10 >> Array.toList
     return
         { Results = matches |> Array.skip (request.Page * 20) |> Array.truncate 20
@@ -52,5 +54,5 @@ let findGeneric (request:FindGenericRequest) = task {
               Localities = matches |> getFacets (fun m -> m.Address.Locality)
               Districts = matches |> getFacets (fun m -> Some m.Address.District)
               Counties = matches |> getFacets (fun m -> Some m.Address.County)
-              Prices = [] } }
+              PriceRanges = matches |> getFacets (fun m -> Some m.PriceRange.Description) } }
     }

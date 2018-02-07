@@ -112,14 +112,15 @@ let private toFindPropertiesResponse findFacet count page results =
                    County = result.County
                    PostCode = result.PostCode |> Option.ofObj }
                Price = result.Price
-               DateOfTransfer = result.DateOfTransfer })
+               DateOfTransfer = result.DateOfTransfer
+               PriceRange = PriceRange.ofPrice result.Price })
       TotalTransactions = count
       Facets = 
         { Towns = findFacet "TownCity"
           Localities = findFacet "Locality"
           Districts = findFacet "District"
           Counties = findFacet "County"
-          Prices = findFacet "Price" }
+          PriceRanges = findFacet "PriceRange" }
       Page = page }
 
 let applyFilters (filter:PropertyFilter) parameters = 

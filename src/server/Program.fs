@@ -60,7 +60,7 @@ let appConfig =
         let builder =
             ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional = true)
+                .AddJsonFile("appSettings.json", optional = true)
                 .AddEnvironmentVariables()
                 .Build()
 
