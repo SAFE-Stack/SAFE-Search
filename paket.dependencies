@@ -21,6 +21,7 @@ clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
 
 group Build
+generate_load_scripts: true
 source https://www.nuget.org/api/v2/
 github CompositionalIT/fshelpers src/FsHelpers/ArmHelper/ArmHelper.fs
 nuget Fake
