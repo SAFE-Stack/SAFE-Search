@@ -35,7 +35,7 @@ let createFilters dispatch facets =
                 toFilterCard dispatch "District" facets.Districts
                 toFilterCard dispatch "Town" facets.Towns
                 toFilterCard dispatch "Locality" facets.Localities
-                toFilterCard dispatch "Price range" facets.PriceRanges
+                toFilterCard dispatch "Price Range" facets.PriceRanges
             ]
         ]
     ]

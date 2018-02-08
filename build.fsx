@@ -210,16 +210,17 @@ FinalTarget "KillProcess" (fun _ ->
     killProcess "dotnet"
     killProcess "dotnet.exe")
 
-Target "Run" (fun _ ->
+Target "RunServer" (fun _ -> async { runDotnet serverPath "run" } |> Async.Start)
+
+Target "RunClient" (fun _ ->
     runDotnet clientPath "restore"
 
-    let server = async { runDotnet serverPath "run" }
     let fablewatch = async { runDotnet clientPath "fable webpack-dev-server" }
     let openBrowser = async {
         System.Threading.Thread.Sleep(5000)
         Diagnostics.Process.Start("http://"+ ipAddress + sprintf ":%d" port) |> ignore }
 
-    Async.Parallel [| server; fablewatch; openBrowser |]
+    Async.Parallel [| fablewatch; openBrowser |]
     |> Async.RunSynchronously
     |> ignore)
 
@@ -254,13 +255,16 @@ Target "All" DoNothing
   ==> "BuildServer"
   ==> "BuildClient"
   ==> "BundleClient"
-  ==> "All"
 
 "BuildClient"
   ==> "Build"
 
 "InstallClient"
   ==> "ImportData"
-  ==> "Run"
+  ==> "RunServer"
+  ==> "All"
 
-RunTargetOrDefault "Run"
+"RunClient"
+  ==> "All"
+
+RunTargetOrDefault "All"

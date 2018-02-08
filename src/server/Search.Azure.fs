@@ -62,7 +62,7 @@ module QueryBuilder =
 
     let doSearch config page searchText (parameters:SearchParameters) = task {
         let searchText = searchText |> Option.map(fun searchText -> searchText + "*") |> Option.defaultValue ""
-        parameters.Facets <- ResizeArray [ "Town"; "Locality"; "District"; "County"; "Price" ]
+        parameters.Facets <- ResizeArray [ "Town"; "Locality"; "District"; "County"; "PriceRange" ]
         parameters.Skip <- Nullable(page * 20)
         parameters.Top <- Nullable 20
         parameters.IncludeTotalResultCount <- true
@@ -127,7 +127,8 @@ let applyFilters (filter:PropertyFilter) parameters =
     [ "TownCity", filter.Town
       "County", filter.County
       "Locality", filter.Locality
-      "District", filter.District ]
+      "District", filter.District
+      "PriceRange", filter.PriceRange ]
     |> List.fold withFilter parameters
 
 let findGeneric config request = task {

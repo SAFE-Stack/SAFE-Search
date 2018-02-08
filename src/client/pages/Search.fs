@@ -80,7 +80,7 @@ let viewResults searchResults dispatch =
                                         toTd row.Address.TownCity
                                         td [ Scope "row" ] [ postcodeLink ]
                                         toTd (row.DateOfTransfer.ToShortDateString())
-                                        toTd (sprintf "£%s" (commaSeparate row.Price)) ]
+                                        toTd (sprintf "Â£%s" (commaSeparate row.Price)) ]
                         ]
                     ]
                     nav [] [
@@ -129,7 +129,7 @@ let view model dispatch =
         yield viewResults model.SearchResults dispatch ]
 
 let findTransactions (text, filter, page) =
-    let filter = filter |> Option.map(fun (facet, value) -> sprintf "?%s=%s" facet value) |> Option.defaultValue ""
+    let filter = filter |> Option.map(fun (facet:string, value) -> sprintf "?%s=%s" (facet.Replace(" ", "")) value) |> Option.defaultValue ""
     Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s/%d%s" text page filter) []
 
 let findByPostcode (postCode, page) =

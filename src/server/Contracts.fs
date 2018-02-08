@@ -8,7 +8,7 @@ type PropertyFilter =
     Locality : string option
     District : string option
     County : string option
-    ``Price range`` : string option }
+    PriceRange : string option }
 type PropertyType =
   | Detached | SemiDetached | Terraced | FlatsMaisonettes | Other
   member this.Description =
@@ -73,4 +73,4 @@ module Helpers =
           bands
           |> Array.tryFind(fun (min, max) -> price > min && price <= max)
           |> Option.map(fun (min, max) -> String.Format("{0:C0} - {1:C0}", min, max))
-          |> Option.defaultValue "Over £1m"
+          |> Option.defaultValue "OVER £1M"
