@@ -116,11 +116,22 @@ Target "DeployArmTemplate" <| fun _ ->
           DeploymentMode = Incremental }
 
     let authCtx =
-        let authCredentials =
-            { ClientId = getBuildParam "clientId" |> Guid.Parse
-              ClientSecret = getBuildParam "clientSecret"
-              TenantId = getBuildParam "tenantId" |> Guid.Parse }
-        authenticate authCredentials (getBuildParam "subscriptionId" |> Guid.Parse)
+        match getBuildParam "subscriptionId", (getBuildParam "clientId", getBuildParam "clientSecret", getBuildParam "tenantId") with
+        | "", _ -> failwith "No subscription id supplied!"
+        | subscriptionId, ("", _, _ | _, "", _ | _, _, "")->
+            let client = AuthenticationContext "https://login.microsoftonline.com/common"
+            async {
+                let! deviceResult = client.AcquireDeviceCodeAsync("https://management.core.windows.net/", "84edda74-cb5b-49e3-99b3-82d1c419e651") |> Async.AwaitTask
+                tracefn "%s" deviceResult.Message
+                let! tokenResult = client.AcquireTokenByDeviceCodeAsync(deviceResult) |> Async.AwaitTask
+                let client = RestClient.Configure().WithEnvironment(AzureEnvironment.AzureGlobalCloud).WithCredentials(Microsoft.Rest.TokenCredentials(tokenResult.AccessToken)).Build()
+                return ResourceManager.Authenticate(client).WithSubscription subscriptionId |> AuthenticatedContext } |> Async.RunSynchronously
+        | subscriptionId, (clientId, clientSecret, tenantId) ->
+            let authCredentials =
+                { ClientId = Guid.Parse clientId
+                  ClientSecret = clientSecret
+                  TenantId = Guid.Parse tenantId }
+            authenticate authCredentials (Guid.Parse subscriptionId)
 
     deployment
     |> deployWithProgress authCtx
@@ -128,40 +139,6 @@ Target "DeployArmTemplate" <| fun _ ->
     | DeploymentInProgress (state, operations) -> tracefn "State is %s, completed %d operations." state operations
     | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
     | DeploymentCompleted _ -> ())
-
-Target "DeployArmTemplateLocal" <| fun _ ->
-    let armTemplate = @"src\arm-template.json"
-    let environment = getBuildParamOrDefault "environment" (Guid.NewGuid().ToString().ToLower().Split '-' |> Array.head)
-    let resourceGroupName = sprintf "safe-property-mapper-%s" environment
-    let authCtx = 
-        let client = new AuthenticationContext("https://login.microsoftonline.com/common")
-        async {
-            let! deviceResult = client.AcquireDeviceCodeAsync("https://management.core.windows.net/", "84edda74-cb5b-49e3-99b3-82d1c419e651") |> Async.AwaitTask
-            printfn "%s" deviceResult.Message
-            let! tokenResult = client.AcquireTokenByDeviceCodeAsync(deviceResult) |> Async.AwaitTask
-            let client = RestClient.Configure().WithEnvironment(AzureEnvironment.AzureGlobalCloud).WithCredentials(Microsoft.Rest.TokenCredentials(tokenResult.AccessToken)).Build()
-            return ResourceManager.Authenticate(client).WithSubscription(getBuildParam "subscriptionId") |> AuthenticatedContext } |> Async.RunSynchronously
-
-    let deployment =
-        { DeploymentName = "FAKE-PropertyMapper-Deploy"
-          ResourceGroup = ResourceGroupType.New(resourceGroupName, Microsoft.Azure.Management.ResourceManager.Fluent.Core.Region.EuropeWest)
-          ArmTemplate = File.ReadAllText armTemplate
-          Parameters =
-            [ "environment", environment
-              "searchSize", getBuildParam "searchSize"
-              "webServerSize", getBuildParam "webServerSize"
-              "alwaysOn", getBuildParam "alwaysOn" ]
-            |> List.choose(fun (k, v) -> if String.IsNullOrWhiteSpace v then None else Some (k, ArmString v))
-            |> Parameters.Simple
-          DeploymentMode = Incremental }
-
-    deployment
-    |> deployWithProgress authCtx
-    |> Seq.iter(function
-    | DeploymentInProgress (state, operations) -> tracefn "State is %s, completed %d operations." state operations
-    | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
-    | DeploymentCompleted _ -> ())
-
 
 // --------------------------------------------------------------------------------------
 // Data Import
