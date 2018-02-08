@@ -46,30 +46,13 @@ type BuildDetails =
     { PropertyType : PropertyType option
       Build : BuildType
       Contract : ContractType }
-type PriceRange =
-    | ``P < 200``
-    | ``P 200 - 300``
-    | ``P 300 - 400``
-    | ``P > 400``
-    member this.Description =
-        match this with
-        | ``P < 200`` -> "Less than £200k"
-        | ``P 200 - 300`` -> "£200k - £300k"
-        | ``P 300 - 400`` -> "£300k - £400k"
-        | ``P > 400`` -> "More than £400k"
-    static member ofPrice price =
-        if price < 200_000 then ``P < 200``
-        elif price < 300_000 then ``P 200 - 300``
-        elif price < 400_000 then ``P 300 - 400``
-        else ``P > 400``
 
 type PropertyResult =
     { TransactionId : Guid
       BuildDetails : BuildDetails
       Address : Address
       Price : int
-      DateOfTransfer : DateTime
-      PriceRange : PriceRange }
+      DateOfTransfer : DateTime }
 type Facets =
     { Towns : string list
       Localities : string list
@@ -81,3 +64,13 @@ type SearchResponse =
     TotalTransactions : int option
     Page : int
     Facets : Facets }
+
+[<AutoOpen>]
+module Helpers =
+  let calculatePriceRange =
+      let bands = [| 0; 50; 100; 150; 200; 250; 350; 500; 750; 1000 |] |> Array.map ((*) 1000) |> Array.pairwise
+      fun price ->
+          bands
+          |> Array.tryFind(fun (min, max) -> price > min && price <= max)
+          |> Option.map(fun (min, max) -> String.Format("{0:C0} - {1:C0}", min, max))
+          |> Option.defaultValue "Over Â£1m"

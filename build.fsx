@@ -144,7 +144,6 @@ Target "DeployArmTemplate" <| fun _ ->
 // Data Import
 open PropertyMapper
 open Importdata
-
 let (|Local|Cloud|) (x:string) =
     match x.ToLower() with
     | "cloud" -> Cloud
@@ -177,7 +176,7 @@ Target "ImportData" (fun _ ->
             |> insertPostcodes connectionString
             |> Array.collect snd
             |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
-            |> logfn "%A"
+            |> logfn "Postcode insertion results: %A"
 
         log "Now inserting property transactions into search index and creating postcode lookup..."
         match mode with
@@ -194,10 +193,10 @@ Target "ImportData" (fun _ ->
                   AzureSearch = ConnectionString "" }
 
             Search.Azure.Management.initialize config
+
             txns
             |> Search.Azure.insertProperties config tryFindGeo
-            |> fun t -> t.Result
-            |> logf "%A"
+            |> ignore
 
             insertPostcodeLookup config.AzureStorage)
 

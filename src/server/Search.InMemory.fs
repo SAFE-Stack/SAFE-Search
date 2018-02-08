@@ -42,7 +42,7 @@ let findGeneric (request:FindGenericRequest) = task {
         |> Array.filter (facetFilter request.Filter.District (fun r -> r.Address.District))
         |> Array.filter (facetFilter request.Filter.Locality (fun r -> r.Address.Locality |> Option.defaultValue ""))
         |> Array.filter (facetFilter request.Filter.Town (fun r -> r.Address.TownCity))
-        |> Array.filter (facetFilter request.Filter.``Price range`` (fun r -> r.PriceRange.Description))
+        |> Array.filter (facetFilter request.Filter.``Price range`` (fun r -> r.Price |> calculatePriceRange))
     
     let getFacets mapper = Array.choose mapper >> Array.distinct >> Array.truncate 10 >> Array.toList
     return
@@ -54,5 +54,5 @@ let findGeneric (request:FindGenericRequest) = task {
               Localities = matches |> getFacets (fun m -> m.Address.Locality)
               Districts = matches |> getFacets (fun m -> Some m.Address.District)
               Counties = matches |> getFacets (fun m -> Some m.Address.County)
-              PriceRanges = matches |> getFacets (fun m -> Some m.PriceRange.Description) } }
+              PriceRanges = matches |> getFacets (fun m -> Some (m.Price |> calculatePriceRange)) } }
     }

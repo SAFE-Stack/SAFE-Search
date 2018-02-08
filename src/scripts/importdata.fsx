@@ -39,8 +39,7 @@ let fetchTransactions rows =
               Build = t.Duration |> BuildType.Parse
               Contract = t.``Old/New`` |> ContractType.Parse }
           Price = t.Price
-          DateOfTransfer = t.Date
-          PriceRange = PriceRange.ofPrice t.Price })
+          DateOfTransfer = t.Date })
     |> Seq.toArray
 
 module FableJson =
