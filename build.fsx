@@ -4,6 +4,7 @@
 
 #I @".\packages\Newtonsoft.Json\lib\netstandard1.3"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
+#r @"packages/build/Microsoft.Rest.ClientRuntime.Azure/lib/netstandard1.4/Microsoft.Rest.ClientRuntime.Azure.dll"
 #load @"src\scripts\importdata.fsx"
       @".paket\load\netstandard2.0\Build\build.group.fsx"
       @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
@@ -13,6 +14,9 @@ open Cit.Helpers.Arm.Parameters
 open Fake
 open System
 open System.IO
+open Microsoft.IdentityModel.Clients.ActiveDirectory
+open Microsoft.Azure.Management.ResourceManager.Fluent
+open Microsoft.Azure.Management.ResourceManager.Fluent.Core
 
 let project = "Property Mapper"
 let summary = "A project to illustrate use of Azure Search to map UK property sales using SAFE."
@@ -112,11 +116,22 @@ Target "DeployArmTemplate" <| fun _ ->
           DeploymentMode = Incremental }
 
     let authCtx =
-        let authCredentials =
-            { ClientId = getBuildParam "clientId" |> Guid.Parse
-              ClientSecret = getBuildParam "clientSecret"
-              TenantId = getBuildParam "tenantId" |> Guid.Parse }
-        authenticate authCredentials (getBuildParam "subscriptionId" |> Guid.Parse)
+        match getBuildParam "subscriptionId", (getBuildParam "clientId", getBuildParam "clientSecret", getBuildParam "tenantId") with
+        | "", _ -> failwith "No subscription id supplied!"
+        | subscriptionId, ("", _, _ | _, "", _ | _, _, "")->
+            let client = AuthenticationContext "https://login.microsoftonline.com/common"
+            async {
+                let! deviceResult = client.AcquireDeviceCodeAsync("https://management.core.windows.net/", "84edda74-cb5b-49e3-99b3-82d1c419e651") |> Async.AwaitTask
+                tracefn "%s" deviceResult.Message
+                let! tokenResult = client.AcquireTokenByDeviceCodeAsync(deviceResult) |> Async.AwaitTask
+                let client = RestClient.Configure().WithEnvironment(AzureEnvironment.AzureGlobalCloud).WithCredentials(Microsoft.Rest.TokenCredentials(tokenResult.AccessToken)).Build()
+                return ResourceManager.Authenticate(client).WithSubscription subscriptionId |> AuthenticatedContext } |> Async.RunSynchronously
+        | subscriptionId, (clientId, clientSecret, tenantId) ->
+            let authCredentials =
+                { ClientId = Guid.Parse clientId
+                  ClientSecret = clientSecret
+                  TenantId = Guid.Parse tenantId }
+            authenticate authCredentials (Guid.Parse subscriptionId)
 
     deployment
     |> deployWithProgress authCtx
@@ -124,7 +139,6 @@ Target "DeployArmTemplate" <| fun _ ->
     | DeploymentInProgress (state, operations) -> tracefn "State is %s, completed %d operations." state operations
     | DeploymentError (statusCode, message) -> traceError <| sprintf "DEPLOYMENT ERROR: %s - '%s'" statusCode message
     | DeploymentCompleted _ -> ())
-
 
 // --------------------------------------------------------------------------------------
 // Data Import
