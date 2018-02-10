@@ -10,3 +10,4 @@ Microsoft.Extensions.Configuration.Json
 Microsoft.Extensions.Logging.Console
 Microsoft.Extensions.Logging.Debug
 WindowsAzure.Storage
+TaskBuilder.fs

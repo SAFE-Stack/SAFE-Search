@@ -3,7 +3,7 @@ module PropertyMapper.AzureStorage
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
 open PropertyMapper
-open Giraffe.Tasks
+open FSharp.Control.Tasks
 open PropertyMapper.Search
 
 let table (ConnectionString connection) =

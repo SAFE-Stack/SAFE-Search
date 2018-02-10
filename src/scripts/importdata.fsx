@@ -78,7 +78,7 @@ let AzureSchema = __SOURCE_DIRECTORY__ + @"\azure-schema.json"
 type Azure = AzureTypeProvider<tableSchema = AzureSchema>
 let table = Azure.Tables.postcodes
 let insertPostcodes connectionString postcodes =
-    table.AsCloudTable().CreateIfNotExists() |> ignore
+    table.AsCloudTable(connectionString).CreateIfNotExists() |> ignore
     let entities =
         postcodes
         |> Seq.map(fun p ->

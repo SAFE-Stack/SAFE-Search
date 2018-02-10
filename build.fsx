@@ -2,7 +2,8 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
-#I @".\packages\Newtonsoft.Json\lib\netstandard1.3"
+#I @"packages/Newtonsoft.Json/lib/netstandard1.3"
+#I @"packages/Microsoft.Spatial/lib\netstandard1.1"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
 #r @"packages/build/Microsoft.Rest.ClientRuntime.Azure/lib/netstandard1.4/Microsoft.Rest.ClientRuntime.Azure.dll"
 #load @"src\scripts\importdata.fsx"
@@ -152,10 +153,9 @@ let (|Local|Cloud|) (x:string) =
 Target "ImportData" (fun _ ->
     let mode = getBuildParam "DataMode"
     
-    log "Downloading transaction data..."
-
     // Insert postcode / geo lookup
     if (not (fileExists (FullName "ukpostcodes.csv"))) then
+        log "Downloading transaction data..."
         let txns = fetchTransactions 1000
         log "Downloading geolocation data..."
         let archivePath = "ukpostcodes.zip"
@@ -168,25 +168,28 @@ Target "ImportData" (fun _ ->
         let postCodes =
             let loadedPostcodes = txns |> Array.Parallel.choose(fun t -> t.Address.PostCode) |> Set
             fetchPostcodes (FullName "ukpostcodes.csv")
-            |> Array.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
+            |> Seq.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
+            |> Seq.cache
 
         let tryFindGeo = postCodes |> Seq.map(fun r -> r.PostCodeDescription, (r.Latitude, r.Longitude)) |> Map.ofSeq |> fun m -> m.TryFind
         let insertPostcodeLookup (ConnectionString connectionString) =
             postCodes
             |> insertPostcodes connectionString
             |> Array.collect snd
-            |> Array.countBy(function FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
+            |> Array.countBy(function
+                | FSharp.Azure.StorageTypeProvider.Table.SuccessfulResponse _ -> "Success" | _ -> "Failed")
             |> logfn "Postcode insertion results: %A"
 
-        log "Now inserting property transactions into search index and creating postcode lookup..."
         match mode with
         | Local ->
+            log "Now inserting property transactions into local simple index and creating postcode lookup..."
             let path = serverPath </> "properties.json"
             File.WriteAllText(path, FableJson.toJson txns)
             AzureHelper.StartStorageEmulator()
             insertPostcodeLookup (ConnectionString "UseDevelopmentStorage=true")
 
         | Cloud ->
+            log "Now inserting property transactions into search index and creating postcode lookup..."
             let config =
                 { AzureSearchServiceName = ""
                   AzureStorage = ConnectionString ""
@@ -196,6 +199,7 @@ Target "ImportData" (fun _ ->
 
             txns
             |> Search.Azure.insertProperties config tryFindGeo
+            |> fun t -> t.Wait()
             |> ignore
 
             insertPostcodeLookup config.AzureStorage)

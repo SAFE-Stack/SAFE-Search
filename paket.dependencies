@@ -16,6 +16,7 @@ nuget Fable.Elmish.Browser
 nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
+nuget TaskBuilder.fs
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
 

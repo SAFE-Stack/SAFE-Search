@@ -1,6 +1,6 @@
 module PropertyMapper.Search.Azure
 
-open Giraffe.Tasks
+open FSharp.Control.Tasks
 open Microsoft.Azure.Search
 open Microsoft.Azure.Search.Models
 open Microsoft.Spatial
@@ -42,6 +42,7 @@ module Management =
         let client = searchClient config
         client.Indexes.GetClient "properties"
 
+    /// Primes the search service by creating an empty index.
     let initialize config =
         let client = searchClient config
         if (client.Indexes.Exists "properties") then client.Indexes.Delete "properties"

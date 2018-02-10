@@ -1,5 +1,4 @@
 namespace Pages
-open PropertyMapper.Contracts
 
 type SearchTerm =
     | Term of string

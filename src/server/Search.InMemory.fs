@@ -1,7 +1,7 @@
 module PropertyMapper.Search.InMemory
 
+open FSharp.Control.Tasks
 open PropertyMapper.Contracts
-open Giraffe.Tasks
 open System
 
 let private data = lazy ("properties.json" |> System.IO.File.ReadAllText |> FableJson.ofJson)
