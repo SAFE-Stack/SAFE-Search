@@ -1,23 +1,22 @@
-// --------------------------------------------------------------------------------------
-// FAKE build script
-// --------------------------------------------------------------------------------------
-
-#I @"packages/Newtonsoft.Json/lib/netstandard1.3"
-#I @"packages/Microsoft.Spatial/lib\netstandard1.1"
+#I @"packages/Microsoft.Spatial/lib/portable-net45+win8+wpa81"
+#I @"packages/build/Microsoft.Rest.ClientRuntime.Azure/lib/net452"
+#I @"packages/build/Newtonsoft.Json/lib/netstandard1.3/"
 #r @"packages/build/FAKE/tools/FakeLib.dll"
-#r @"packages/build/Microsoft.Rest.ClientRuntime.Azure/lib/netstandard1.4/Microsoft.Rest.ClientRuntime.Azure.dll"
-#load @"src\scripts\importdata.fsx"
-      @".paket\load\netstandard2.0\Build\build.group.fsx"
-      @"paket-files\build\CompositionalIT\fshelpers\src\FsHelpers\ArmHelper\ArmHelper.fs"
+#load @".paket/load/netstandard2.0/Build/build.group.fsx"
+      @"src/scripts/importdata.fsx"
+      @"paket-files/build/CompositionalIT/fshelpers/src/FsHelpers/ArmHelper/ArmHelper.fs"
 
 open Cit.Helpers.Arm
 open Cit.Helpers.Arm.Parameters
 open Fake
-open System
-open System.IO
-open Microsoft.IdentityModel.Clients.ActiveDirectory
+open Importdata
 open Microsoft.Azure.Management.ResourceManager.Fluent
 open Microsoft.Azure.Management.ResourceManager.Fluent.Core
+open Microsoft.IdentityModel.Clients.ActiveDirectory
+open PropertyMapper
+open System
+open System.IO
+
 
 let project = "Property Mapper"
 let summary = "A project to illustrate use of Azure Search to map UK property sales using SAFE."
@@ -143,8 +142,6 @@ Target "DeployArmTemplate" <| fun _ ->
 
 // --------------------------------------------------------------------------------------
 // Data Import
-open PropertyMapper
-open Importdata
 let (|Local|Cloud|) (x:string) =
     match x.ToLower() with
     | "cloud" -> Cloud
@@ -152,9 +149,10 @@ let (|Local|Cloud|) (x:string) =
 
 Target "ImportData" (fun _ ->
     let mode = getBuildParam "DataMode"
+    tracefn "Data Mode is %s" mode
     
     // Insert postcode / geo lookup
-    if (not (fileExists (FullName "ukpostcodes.csv"))) then
+    if (not (fileExists (FullName "ukpostcodes.csv")) || hasBuildParam "ForceImport") then
         log "Downloading transaction data..."
         let txns = fetchTransactions 1000
         log "Downloading geolocation data..."
@@ -170,8 +168,8 @@ Target "ImportData" (fun _ ->
             fetchPostcodes (FullName "ukpostcodes.csv")
             |> Seq.filter(fun (r:Importdata.GeoPostcode) -> loadedPostcodes.Contains r.PostCodeDescription)
             |> Seq.cache
-
         let tryFindGeo = postCodes |> Seq.map(fun r -> r.PostCodeDescription, (r.Latitude, r.Longitude)) |> Map.ofSeq |> fun m -> m.TryFind
+
         let insertPostcodeLookup (ConnectionString connectionString) =
             postCodes
             |> insertPostcodes connectionString
@@ -197,10 +195,8 @@ Target "ImportData" (fun _ ->
 
             Search.Azure.Management.initialize config
 
-            txns
-            |> Search.Azure.insertProperties config tryFindGeo
-            |> fun t -> t.Wait()
-            |> ignore
+            txns |> Search.Azure.insertProperties config tryFindGeo
+            insertTask.Wait()
 
             insertPostcodeLookup config.AzureStorage)
 
