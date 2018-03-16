@@ -3,9 +3,9 @@ open PropertyMapper.Contracts
 
 type SearchTerm =
     | Term of string
-    | Postcode of string
+    | PostcodeSearch of string
     static member Empty = Term ""
-    member this.Description = match this with | Term x | Postcode x -> x
+    member this.Description = match this with | Term x | PostcodeSearch x -> x
 
 [<AutoOpen>]
 module Helpers =

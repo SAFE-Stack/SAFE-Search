@@ -18,7 +18,10 @@ let genericSearch (searcher:Search.ISearch) (text, page) next (ctx:HttpContext) 
     let request =
         { Page = page
           Text = if System.String.IsNullOrWhiteSpace text then None else Some text
-          Filter = ctx.BindQueryString<PropertyFilter>() }
+          Filter = ctx.BindQueryString<PropertyFilter>()
+          Sort =
+            { SortColumn = ctx.TryGetQueryStringValue "SortColumn"
+              SortDirection = ctx.TryGetQueryStringValue "SortDirection" |> Option.bind SortDirection.TryParse } }
     task {
         let! properties = searcher.GenericSearch request
         return! FableJson.serialize properties next ctx }

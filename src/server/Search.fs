@@ -4,7 +4,7 @@ open PropertyMapper.Contracts
 open System.Threading.Tasks
 
 type FindNearestRequest = { Postcode : string; MaxDistance : int; Page : int; Filter : PropertyFilter }
-type FindGenericRequest = { Text : string option; Page : int; Filter : PropertyFilter }
+type FindGenericRequest = { Text : string option; Page : int; Filter : PropertyFilter; Sort : Sort }
 type Geo = { Lat : float; Long : float }
 
 type ISearch =

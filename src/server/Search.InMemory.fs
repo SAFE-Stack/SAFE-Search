@@ -17,6 +17,24 @@ let findByPostcode (request:FindNearestRequest) = task {
               Counties = []
               Prices = [] } } }
 
+let sortResults sortParams results =
+    match sortParams.SortColumn with
+    | Some col ->
+        let directedCompare a b =
+            match PropertyTableColumn.TryParse col with
+            | Some Street -> compare a.Address.FirstLine b.Address.FirstLine
+            | Some Town -> compare a.Address.TownCity b.Address.TownCity
+            | Some Postcode -> compare a.Address.PostCode b.Address.PostCode
+            | Some Date -> compare a.DateOfTransfer b.DateOfTransfer
+            | Some Price -> compare a.Price b.Price
+            | None -> 0
+            |> fun v ->
+                match sortParams.SortDirection with
+                | Some Ascending | None -> v
+                | Some Descending -> -v
+        results |> Array.sortWith directedCompare
+    | None -> results
+
 let findGeneric (request:FindGenericRequest) = task {
     let genericFilter =
         match request.Text with
@@ -41,6 +59,7 @@ let findGeneric (request:FindGenericRequest) = task {
         |> Array.filter (facetFilter request.Filter.District (fun r -> r.Address.District))
         |> Array.filter (facetFilter request.Filter.Locality (fun r -> r.Address.Locality |> Option.defaultValue ""))
         |> Array.filter (facetFilter request.Filter.Town (fun r -> r.Address.TownCity))
+        |> sortResults request.Sort
             
     let getFacets mapper = Array.choose mapper >> Array.distinct >> Array.truncate 10 >> Array.toList
     return
