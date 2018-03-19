@@ -9,6 +9,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "server", "src\server\server
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CB4357BB-47B5-47D5-9143-40B5C6785A4C}"
 	ProjectSection(SolutionItems) = preProject
+		src\arm-template.json = src\arm-template.json
 		build.fsx = build.fsx
 		src\scripts\importdata.fsx = src\scripts\importdata.fsx
 		paket.dependencies = paket.dependencies

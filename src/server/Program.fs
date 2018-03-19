@@ -36,13 +36,13 @@ let createSearch config =
     | config ->
         { new Search.ISearch with
             member __.GenericSearch request = Search.Azure.findGeneric config request
-            member __.PostcodeSearch request = Search.Azure.findByPostcode config AzureStorage.tryGetGeo request }        
+            member __.PostcodeSearch request = Search.Azure.findByPostcode config AzureStorage.tryGetGeo request }
 
-let configureApp config (app : IApplicationBuilder) =
+let configureApp searcher (app : IApplicationBuilder) =
     app.UseCors(configureCors)
        .UseGiraffeErrorHandler(errorHandler)
        .UseStaticFiles()
-       .UseGiraffe(webApp config)
+       .UseGiraffe(webApp searcher)
 
 let configureServices (services : IServiceCollection) =
     let sp  = services.BuildServiceProvider()

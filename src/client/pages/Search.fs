@@ -48,7 +48,7 @@ let viewResults searchResults currentSort dispatch =
                 | Descending -> None, " ▼"
             | _ -> Some Ascending, ""
         let nextSort = nextSortDir |> Option.map (fun sortDir -> col, sortDir)
-        th [ Scope "col"; OnClick(fun _ -> dispatch (SetSort nextSort)) ] [ str (string col + currentSortDisplay) ]
+        th [ Scope "col"; Style [ Cursor "pointer" ]; OnClick(fun _ -> dispatch (SetSort nextSort)) ] [ str (string col + currentSortDisplay) ]
     let toDetailsLink row c =
         td [ Scope "row" ] [
             a [ Href "#"
