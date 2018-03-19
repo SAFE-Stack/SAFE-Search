@@ -2,6 +2,14 @@ namespace PropertyMapper.Contracts
 
 open System
 
+type SortDirection =
+    | Ascending | Descending
+    static member TryParse str =
+        if string Ascending = str then Some Ascending
+        elif string Descending = str then Some Descending
+        else None
+[<CLIMutable>]
+type Sort = { SortColumn : string option; SortDirection : SortDirection option }
 [<CLIMutable>]
 type PropertyFilter =
   { Town : string option
@@ -10,6 +18,15 @@ type PropertyFilter =
     County : string option
     MaxPrice : int option
     MinPrice : int option }
+type PropertyTableColumn =
+    | Street | Town | Postcode | Date | Price
+    static member TryParse s =
+        if s = string Street then Some Street
+        elif s = string Town then Some Town
+        elif s = string Postcode then Some Postcode
+        elif s = string Date then Some Date
+        elif s = string Price then Some Price
+        else None
 type PropertyType =
   | Detached | SemiDetached | Terraced | FlatsMaisonettes | Other
   member this.Description =

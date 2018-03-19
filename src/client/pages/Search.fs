@@ -9,7 +9,7 @@ open PropertyMapper.Contracts
 
 type SearchState = Searching | Displaying
 
-type SearchParameters = { Facet : (string * string) option; Page : int }
+type SearchParameters = { Facet : (string * string) option; Page : int; Sort : (PropertyTableColumn * SortDirection) option }
 type SearchResults = { SearchTerm : SearchTerm; Response : SearchResponse }
 
 type Model =
@@ -24,6 +24,7 @@ type Msg =
     | SetSearch of string
     | DoSearch of SearchTerm
     | SetFilter of string * string
+    | SetSort of (PropertyTableColumn * SortDirection) option
     | ChangePage of int
     | SearchCompleted of SearchTerm * SearchResponse
     | SearchError of exn
@@ -33,12 +34,21 @@ let init _ =
     { Text = SearchTerm.Empty
       LastSearch = SearchTerm.Empty
       Status = SearchState.Displaying
-      Parameters = { Facet = None; Page = 0 }
+      Parameters = { Facet = None; Page = 0; Sort = None }
       SearchResults = None
       Selected = None }
 
-let viewResults searchResults dispatch =
-    let toTh c = th [ Scope "col" ] [ str c ]
+let viewResults searchResults currentSort dispatch =
+    let toTh col =
+        let nextSortDir, currentSortDisplay =
+            match currentSort with
+            | Some (sortCol, sortDirection) when sortCol = col ->
+                match sortDirection with
+                | Ascending -> Some Descending, " ▲"
+                | Descending -> None, " ▼"
+            | _ -> Some Ascending, ""
+        let nextSort = nextSortDir |> Option.map (fun sortDir -> col, sortDir)
+        th [ Scope "col"; Style [ Cursor "pointer" ]; OnClick(fun _ -> dispatch (SetSort nextSort)) ] [ str (string col + currentSortDisplay) ]
     let toDetailsLink row c =
         td [ Scope "row" ] [
             a [ Href "#"
@@ -56,7 +66,7 @@ let viewResults searchResults dispatch =
             let description =
                 match term with
                 | Term term -> sprintf "Search results for '%s'%s." term hits
-                | Postcode postcode -> sprintf "Showing properties within a 1km radius of '%s'%s." postcode hits
+                | PostcodeSearch postcode -> sprintf "Showing properties within a 1km radius of '%s'%s." postcode hits
 
             yield div [ ClassName "row" ] [
                 div [ ClassName "col-2" ] [ Filter.createFilters (SetFilter >> dispatch) response.Facets ]
@@ -64,23 +74,23 @@ let viewResults searchResults dispatch =
                     div [ ClassName "row" ] [ div [ ClassName "col" ] [ h4 [] [ str description ] ] ]
                     table [ ClassName "table table-bordered table-hover" ] [
                         thead [] [
-                            tr [] [ toTh "Street"
-                                    toTh "Town"
-                                    toTh "Postcode"
-                                    toTh "Date"
-                                    toTh "Price" ]
+                            tr [] [ toTh Street
+                                    toTh Town
+                                    toTh Postcode
+                                    toTh Date
+                                    toTh Price ]
                         ]
                         tbody [] [
                             for row in response.Results ->
                                 let postcodeLink =
                                     a
-                                        [ Href "#"; OnClick(fun _ -> row.Address.PostCode |> Option.iter(Postcode >> DoSearch >> dispatch)) ]
+                                        [ Href "#"; OnClick(fun _ -> row.Address.PostCode |> Option.iter(PostcodeSearch >> DoSearch >> dispatch)) ]
                                         [ row.Address.PostCode |> Option.defaultValue "" |> str ]
                                 tr [] [ toDetailsLink row row.Address.FirstLine
                                         toTd row.Address.TownCity
                                         td [ Scope "row" ] [ postcodeLink ]
                                         toTd (row.DateOfTransfer.ToShortDateString())
-                                        toTd (sprintf "�%s" (commaSeparate row.Price)) ]
+                                        toTd (sprintf "£%s" (commaSeparate row.Price)) ]
                         ]
                     ]
                     nav [] [
@@ -126,32 +136,38 @@ let view model dispatch =
                 ]
             ]
             button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Text)) ] [ str "Search!" ] ]
-        yield viewResults model.SearchResults dispatch ]
+        yield viewResults model.SearchResults model.Parameters.Sort dispatch ]
 
-let findTransactions (text, filter, page) =
-    let filter = filter |> Option.map(fun (facet, value) -> sprintf "?%s=%s" facet value) |> Option.defaultValue ""
-    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s/%d%s" text page filter) []
+let queryString parameters =
+    [ match parameters.Facet with Some f -> yield f | None -> ()
+      match parameters.Sort with
+      | Some (col, dir) -> yield! [ ("SortColumn", (string col)); ("SortDirection", string dir) ]
+      | None -> () ]
+    |> List.map (fun (key:string, value) -> sprintf "%s=%s" key value)
+    |> String.concat "&"
+    |> function "" -> "" | s -> "?" + s
 
-let findByPostcode (postCode, page) =
-    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/%s/1/%d" postCode page) []
+let findTransactions (text, parameters) =
+    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s/%d%s" text parameters.Page (queryString parameters)) []
+
+let findByPostcode (postCode, page, parameters) =
+    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/%s/1/%d%s" postCode page (queryString parameters)) []
 
 let update msg model : Model * Cmd<Msg> =
-    let initiateSearch model term facet page =
+    let initiateSearch model term parameters =
         let cmd =
             match term with
-            | Term text -> Cmd.ofPromise findTransactions (text, facet, page)
-            | Postcode postcode -> Cmd.ofPromise findByPostcode (postcode, page)
+            | Term text -> Cmd.ofPromise findTransactions (text, parameters)
+            | PostcodeSearch postcode -> Cmd.ofPromise findByPostcode (postcode, parameters.Page, parameters)
         let cmd = cmd (fun response -> SearchCompleted(term, response)) SearchError
-        { model with
-            Status = Searching
-            LastSearch = term
-            Parameters = { Facet = facet; Page = page } }, cmd
+        { model with Status = Searching; LastSearch = term; Parameters = parameters }, cmd
     match msg with
     | SetSearch text -> { model with Text = Term text }, Cmd.none
     | DoSearch (Term text) when System.String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
-    | DoSearch term -> initiateSearch model term None 0
-    | SetFilter (facet, value) -> initiateSearch model model.LastSearch (Some(facet, value)) model.Parameters.Page
-    | ChangePage page -> initiateSearch model model.LastSearch model.Parameters.Facet page
+    | DoSearch term -> initiateSearch model term { Facet = None; Page = 0; Sort = None }
+    | SetFilter (facet, value) -> initiateSearch model model.LastSearch { model.Parameters with Facet = Some(facet, value) }
+    | SetSort sort -> initiateSearch model model.LastSearch { model.Parameters with Sort = sort }
+    | ChangePage page -> initiateSearch model model.LastSearch { model.Parameters with Page = page }
     | SearchCompleted (term, response) ->
         { model with
             Status = Displaying

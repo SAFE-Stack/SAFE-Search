@@ -14,14 +14,14 @@ type SearchableProperty =
     { [<Key; IsFilterable>] TransactionId : string
       [<IsFacetable; IsSortable>] Price : int
       [<IsFilterable; IsSortable>] DateOfTransfer : DateTime
-      PostCode : string
+      [<IsSortable>] PostCode : string
       [<IsFacetable; IsFilterable>] PropertyType : string
       [<IsFacetable; IsFilterable>] Build : string
       [<IsFacetable; IsFilterable>] Contract : string
-      Building : string
-      [<IsSearchable>] Street : string
+      [<IsSortable>] Building : string
+      [<IsSearchable; IsSortable>] Street : string
       [<IsFacetable; IsFilterable; IsSearchable>] Locality : string
-      [<IsFacetable; IsFilterable; IsSearchable>] Town : string
+      [<IsFacetable; IsFilterable; IsSearchable; IsSortable>] Town : string
       [<IsFacetable; IsFilterable; IsSearchable>] District : string
       [<IsFacetable; IsFilterable; IsSearchable>] County : string
       [<IsFilterable>] Geo : GeographyPoint }
@@ -48,7 +48,6 @@ module Management =
 
 [<AutoOpen>]
 module QueryBuilder =
-    open System.Collections.Generic
     let findByDistance (geo:GeographyPoint) maxDistance =
         SearchParameters(Filter=sprintf "geo.distance(Geo, geography'POINT(%f %f)') le %d" geo.Longitude geo.Latitude maxDistance)
     let withFilter (parameters:SearchParameters) (field, value:string option) =
@@ -57,6 +56,22 @@ module QueryBuilder =
               (value |> Option.map(fun value -> sprintf "(%s eq '%s')" field (value.ToUpper()))) ]
             |> List.choose id
             |> String.concat " and "
+        parameters
+    
+    let toSearchColumns col =
+        match PropertyTableColumn.TryParse col with
+        | Some Street -> [ "Building"; "Street" ]
+        | Some Town -> [ "Town" ]
+        | Some Postcode -> [ "PostCode" ]
+        | Some Date -> [ "DateOfTransfer" ]
+        | Some Price -> [ "Price" ]
+        | None -> []
+        
+    let orderBy sort (parameters:SearchParameters) =
+        sort.SortColumn |> Option.iter (fun col ->
+            let searchCols = toSearchColumns col
+            let direction = match sort.SortDirection with Some Ascending | None -> "asc" | Some Descending -> "desc"
+            parameters.OrderBy <- searchCols |> List.map (fun col -> sprintf "%s %s" col direction) |> ResizeArray)
         parameters
 
     let doSearch config page searchText (parameters:SearchParameters) = task {
@@ -94,7 +109,7 @@ let insertProperties config tryGetGeo (properties:PropertyResult seq) =
     |> IndexBatch.Upload
     |> index.Documents.IndexAsync
 
-let private toFindPropertiesResponse findFacet count page results =      
+let private toFindPropertiesResponse findFacet count page results =
     { Results =
         results
         |> Array.map(fun result ->
@@ -114,7 +129,7 @@ let private toFindPropertiesResponse findFacet count page results =
                Price = result.Price
                DateOfTransfer = result.DateOfTransfer })
       TotalTransactions = count
-      Facets = 
+      Facets =
         { Towns = findFacet "TownCity"
           Localities = findFacet "Locality"
           Districts = findFacet "District"
@@ -122,7 +137,7 @@ let private toFindPropertiesResponse findFacet count page results =
           Prices = findFacet "Price" }
       Page = page }
 
-let applyFilters (filter:PropertyFilter) parameters = 
+let applyFilters (filter:PropertyFilter) parameters =
     [ "TownCity", filter.Town
       "County", filter.County
       "Locality", filter.Locality
@@ -133,9 +148,10 @@ let findGeneric config request = task {
     let! findFacet, searchResults, count =
         SearchParameters()
         |> applyFilters request.Filter
+        |> orderBy request.Sort
         |> doSearch config request.Page request.Text
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
-        
+
 let findByPostcode config tryGetGeo request = task {
     let! geo =
         match request.Postcode.Split ' ' with
