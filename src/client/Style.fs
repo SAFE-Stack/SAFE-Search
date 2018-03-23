@@ -5,6 +5,11 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Fable.Import
 
+module KeyCode =
+    let enter = 13.
+    let upArrow = 38.
+    let downArrow =  40.
+
 module R = Fable.Helpers.React
 
 let buttonLink cssClass onClick elements = 
@@ -13,10 +18,10 @@ let buttonLink cssClass onClick elements =
           OnTouchStart (fun _ -> onClick())
           Style [ !!("cursor", "pointer") ] ] elements
 
-let onEnter msg dispatch =
+let onKeyDown keyCodeActions =
     OnKeyDown (fun (ev:React.KeyboardEvent) ->
-        match ev with 
-        | _ when ev.keyCode = 13. ->
+        keyCodeActions
+        |> List.tryFind (fst >> (=) ev.keyCode)
+        |> Option.iter (fun (keyCode, action) ->
             ev.preventDefault()
-            dispatch msg
-        | _ -> ())
+            action ev))

@@ -6,14 +6,20 @@ open Fable.Helpers.React
 open Fable.Helpers.React.Props
 open Fable.PowerPack
 open PropertyMapper.Contracts
+open System
+open System.Text.RegularExpressions
+open Client.Style
+open Fable.Import
 
 type SearchState = Searching | Displaying
 
 type SearchParameters = { Facet : (string * string) option; Page : int; Sort : (PropertyTableColumn * SortDirection) option }
 type SearchResults = { SearchTerm : SearchTerm; Response : SearchResponse }
+type Suggestions = { SuggestedTerms : string array; SelectedSuggestion : int option; Show : bool }
 
 type Model =
     { Text : SearchTerm
+      Suggestions: Suggestions
       LastSearch : SearchTerm
       Status : SearchState
       Parameters : SearchParameters
@@ -23,15 +29,22 @@ type Model =
 type Msg =
     | SetSearch of string
     | DoSearch of SearchTerm
+    | SearchBoxEnter
     | SetFilter of string * string
     | SetSort of (PropertyTableColumn * SortDirection) option
     | ChangePage of int
     | SearchCompleted of SearchTerm * SearchResponse
     | SearchError of exn
     | SelectTransaction of PropertyResult
+    | ShowSuggestions of bool
+    | SelectSuggestionOffset of offset:int
+    | SelectSuggestion of index:int
+
+let emptySuggestions = { SuggestedTerms = [| |]; SelectedSuggestion = None; Show = false }
 
 let init _ =
     { Text = SearchTerm.Empty
+      Suggestions = emptySuggestions
       LastSearch = SearchTerm.Empty
       Status = SearchState.Displaying
       Parameters = { Facet = None; Page = 0; Sort = None }
@@ -40,13 +53,13 @@ let init _ =
 
 let viewResults searchResults currentSort dispatch =
     let toTh col =
-        let nextSortDir, currentSortDisplay =
+        let currentSortDisplay, nextSortDir =
             match currentSort with
             | Some (sortCol, sortDirection) when sortCol = col ->
                 match sortDirection with
-                | Ascending -> Some Descending, " ▲"
-                | Descending -> None, " ▼"
-            | _ -> Some Ascending, ""
+                | Ascending -> " ▲", Some Descending
+                | Descending -> " ▼", None
+            | _ -> "", Some Ascending
         let nextSort = nextSortDir |> Option.map (fun sortDir -> col, sortDir)
         th [ Scope "col"; Style [ Cursor "pointer" ]; OnClick(fun _ -> dispatch (SetSort nextSort)) ] [ str (string col + currentSortDisplay) ]
     let toDetailsLink row c =
@@ -112,31 +125,54 @@ let viewResults searchResults currentSort dispatch =
             ]
     ]
 
+let viewSuggestions dispatch suggestions =
+    match suggestions.SuggestedTerms with
+    | _ when not suggestions.Show -> []
+    | [| |] -> []
+    | _ ->
+        let viewSuggestion i sug =
+            let attributes = [
+                yield OnMouseDown (fun _ -> dispatch (SelectSuggestion i)) :> IHTMLProp
+                if Some i = suggestions.SelectedSuggestion then yield ClassName "bg-primary" :> IHTMLProp ]
+            div attributes [ str sug ]
+        [ div
+            [ Style [ Position "absolute"; ZIndex 1. ]; ClassName "border bg-light" ]
+            [ yield! suggestions.SuggestedTerms |> Array.mapi viewSuggestion ] ]
+
+let searchValue = "searchValue"
+let setSearchValue text = Browser.document.getElementById(searchValue)?value <- text
+
 let view model dispatch =
     let progressBarVisibility = match model.Status with | Searching -> "visible" | Displaying -> "invisible"
     div [ ClassName "col" ] [
-        yield Details.view model.Selected
-        yield div [ ClassName "border rounded m-3 p-3 bg-light" ] [
+        Details.view model.Selected
+        div [ ClassName "border rounded m-3 p-3 bg-light" ] [
             div [ ClassName "form-group" ] [
-                label [ HtmlFor "searchValue" ] [ str "Search for" ]
-                input [
+                yield label [ HtmlFor searchValue ] [ str "Search for" ]
+                yield input [
                     ClassName "form-control"
-                    Id "searchValue"
+                    Id searchValue
                     Placeholder "Enter Search"
-                    OnChange (fun ev -> dispatch (SetSearch !!ev.target?value))
-                    Client.Style.onEnter (DoSearch model.Text) dispatch
+                    OnChange (fun ev -> dispatch (SetSearch !!ev.target?value); dispatch (ShowSuggestions true))
+                    OnFocus (fun _ -> dispatch (ShowSuggestions true))
+                    OnBlur (fun _ -> Browser.window.setTimeout((fun _ -> dispatch (ShowSuggestions false)), 100) |> ignore)
+                    onKeyDown [
+                        KeyCode.upArrow, fun _ -> dispatch (SelectSuggestionOffset -1)
+                        KeyCode.downArrow, fun _ -> dispatch (SelectSuggestionOffset 1)
+                        KeyCode.enter, fun _ -> dispatch SearchBoxEnter ]
                 ]
+                yield! viewSuggestions dispatch model.Suggestions
             ]
             div [ ClassName "form-group" ] [
-                div [ ClassName "progress" ] [
-                    div [ ClassName (sprintf "progress-bar progress-bar-striped progress-bar-animated %s" progressBarVisibility)
+                div [ ClassName ("progress " + progressBarVisibility) ] [
+                    div [ ClassName "progress-bar progress-bar-striped progress-bar-animated"
                           Role "progressbar"
                           Style [ Width "100%" ] ]
                         [ str <| sprintf "Searching for '%s'..." model.LastSearch.Description ]
                 ]
             ]
             button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Text)) ] [ str "Search!" ] ]
-        yield viewResults model.SearchResults model.Parameters.Sort dispatch ]
+        viewResults model.SearchResults model.Parameters.Sort dispatch ]
 
 let queryString parameters =
     [ match parameters.Facet with Some f -> yield f | None -> ()
@@ -153,6 +189,27 @@ let findTransactions (text, parameters) =
 let findByPostcode (postCode, page, parameters) =
     Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/%s/1/%d%s" postCode page (queryString parameters)) []
 
+let fetchSuggestions searchText =
+    let terms = Regex.Split(searchText, "\s+") |> Array.filter ((<>) "") |> Array.distinct
+    terms |> Array.collect (fun x -> [| x + "1"; x + "2" |])
+
+let updateSuggestions model =
+    let suggestedTerms =
+        match model.Text with
+        | Term text when not (String.IsNullOrWhiteSpace text) -> fetchSuggestions text
+        | Term _ | PostcodeSearch _ -> [||]
+    { model with Suggestions = { model.Suggestions with SuggestedTerms = suggestedTerms; SelectedSuggestion = None } }
+
+let updateSelectedSuggestion offset suggestions =
+    let count = suggestions.SuggestedTerms.Length
+    let newSelected =
+        match suggestions.SelectedSuggestion with
+        | Some current -> current
+        | None when offset > 0 -> -1
+        | None -> count
+        |> fun initial -> (initial + offset + count) % count
+    { suggestions with SelectedSuggestion = Some newSelected }
+
 let update msg model : Model * Cmd<Msg> =
     let initiateSearch model term parameters =
         let cmd =
@@ -160,11 +217,19 @@ let update msg model : Model * Cmd<Msg> =
             | Term text -> Cmd.ofPromise findTransactions (text, parameters)
             | PostcodeSearch postcode -> Cmd.ofPromise findByPostcode (postcode, parameters.Page, parameters)
         let cmd = cmd (fun response -> SearchCompleted(term, response)) SearchError
-        { model with Status = Searching; LastSearch = term; Parameters = parameters }, cmd
+        { model with Status = Searching; LastSearch = term; Parameters = parameters; Suggestions = emptySuggestions }, cmd
+    let setSearchToSuggestion model i =
+        let suggestion = model.Suggestions.SuggestedTerms |> Array.tryItem i |> Option.defaultValue ""
+        setSearchValue suggestion
+        { model with Suggestions = emptySuggestions }, Cmd.ofMsg (SetSearch suggestion)
     match msg with
-    | SetSearch text -> { model with Text = Term text }, Cmd.none
-    | DoSearch (Term text) when System.String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
+    | SetSearch text -> ({ model with Text = Term text } |> updateSuggestions), Cmd.none
+    | DoSearch (Term text) when String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
     | DoSearch term -> initiateSearch model term { Facet = None; Page = 0; Sort = None }
+    | SearchBoxEnter ->
+        match model.Suggestions.SelectedSuggestion with
+        | Some i -> setSearchToSuggestion model i
+        | None -> model, Cmd.ofMsg (DoSearch model.Text)
     | SetFilter (facet, value) -> initiateSearch model model.LastSearch { model.Parameters with Facet = Some(facet, value) }
     | SetSort sort -> initiateSearch model model.LastSearch { model.Parameters with Sort = sort }
     | ChangePage page -> initiateSearch model model.LastSearch { model.Parameters with Page = page }
@@ -175,3 +240,6 @@ let update msg model : Model * Cmd<Msg> =
             Selected = None }, Cmd.none
     | SearchError _ -> model, Cmd.none
     | SelectTransaction transaction -> { model with Selected = Some transaction }, Cmd.none
+    | ShowSuggestions b -> { model with Suggestions = { model.Suggestions with Show = b } }, Cmd.none
+    | SelectSuggestionOffset offset -> { model with Suggestions = updateSelectedSuggestion offset model.Suggestions }, Cmd.none
+    | SelectSuggestion i -> setSearchToSuggestion model i
