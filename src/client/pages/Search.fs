@@ -39,6 +39,8 @@ type Msg =
     | ShowSuggestions of bool
     | SelectSuggestionOffset of offset:int
     | SelectSuggestion of index:int
+    | FetchSuggestions
+    | ReceiveSuggestions of string array
 
 let emptySuggestions = { SuggestedTerms = [| |]; SelectedSuggestion = None; Show = false }
 
@@ -136,7 +138,7 @@ let viewSuggestions dispatch suggestions =
                 if Some i = suggestions.SelectedSuggestion then yield ClassName "bg-primary" :> IHTMLProp ]
             div attributes [ str sug ]
         [ div
-            [ Style [ Position "absolute"; ZIndex 1. ]; ClassName "border bg-light" ]
+            [ Style [ Position "absolute"; ZIndex 10. ]; ClassName "border bg-light" ]
             [ yield! suggestions.SuggestedTerms |> Array.mapi viewSuggestion ] ]
 
 let searchValue = "searchValue"
@@ -183,22 +185,19 @@ let queryString parameters =
     |> String.concat "&"
     |> function "" -> "" | s -> "?" + s
 
+let host = "http://localhost:5000"
+
 let findTransactions (text, parameters) =
-    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/find/%s/%d%s" text parameters.Page (queryString parameters)) []
+    Fetch.fetchAs<SearchResponse> (sprintf "%s/property/find/%s/%d%s" host text parameters.Page (queryString parameters)) []
 
 let findByPostcode (postCode, page, parameters) =
-    Fetch.fetchAs<SearchResponse> (sprintf "http://localhost:5000/property/%s/1/%d%s" postCode page (queryString parameters)) []
+    Fetch.fetchAs<SearchResponse> (sprintf "%s/property/%s/1/%d%s" host postCode page (queryString parameters)) []
 
-let fetchSuggestions searchText =
-    let terms = Regex.Split(searchText, "\s+") |> Array.filter ((<>) "") |> Array.distinct
-    terms |> Array.collect (fun x -> [| x + "1"; x + "2" |])
-
-let updateSuggestions model =
-    let suggestedTerms =
-        match model.Text with
-        | Term text when not (String.IsNullOrWhiteSpace text) -> fetchSuggestions text
-        | Term _ | PostcodeSearch _ -> [||]
-    { model with Suggestions = { model.Suggestions with SuggestedTerms = suggestedTerms; SelectedSuggestion = None } }
+let fetchSuggestions text =
+    match text with
+    | Term text when not (String.IsNullOrWhiteSpace text) ->
+        Fetch.fetchAs<SuggestResponse> (sprintf "%s/property/find-suggestion/%s" host text) []
+    | Term _ | PostcodeSearch _ -> promise { return { Suggestions = [||] } }
 
 let updateSelectedSuggestion offset suggestions =
     let count = suggestions.SuggestedTerms.Length
@@ -223,7 +222,7 @@ let update msg model : Model * Cmd<Msg> =
         setSearchValue suggestion
         { model with Suggestions = emptySuggestions }, Cmd.ofMsg (SetSearch suggestion)
     match msg with
-    | SetSearch text -> ({ model with Text = Term text } |> updateSuggestions), Cmd.none
+    | SetSearch text -> { model with Text = Term text }, Cmd.ofMsg FetchSuggestions
     | DoSearch (Term text) when String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
     | DoSearch term -> initiateSearch model term { Facet = None; Page = 0; Sort = None }
     | SearchBoxEnter ->
@@ -243,3 +242,6 @@ let update msg model : Model * Cmd<Msg> =
     | ShowSuggestions b -> { model with Suggestions = { model.Suggestions with Show = b } }, Cmd.none
     | SelectSuggestionOffset offset -> { model with Suggestions = updateSelectedSuggestion offset model.Suggestions }, Cmd.none
     | SelectSuggestion i -> setSearchToSuggestion model i
+    | FetchSuggestions -> model, Cmd.ofPromise fetchSuggestions model.Text (fun r -> ReceiveSuggestions r.Suggestions) (fun _ -> ReceiveSuggestions [||])
+    | ReceiveSuggestions sugs -> { model with Suggestions = { model.Suggestions with SuggestedTerms = sugs; SelectedSuggestion = None } }, Cmd.none
+

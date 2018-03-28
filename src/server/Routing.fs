@@ -14,6 +14,11 @@ let searchProperties (searcher:Search.ISearch) (postCode:string, distance, page)
               Page = page }
     return! FableJson.serialize properties next ctx }
 
+let searchSuggest (searcher:Search.ISearch) text next (ctx:HttpContext) =
+    task {
+        let! properties = searcher.Suggest { Text = text }
+        return! FableJson.serialize properties next ctx }
+
 let genericSearch (searcher:Search.ISearch) (text, page) next (ctx:HttpContext) =
     let request =
         { Page = page
@@ -25,11 +30,13 @@ let genericSearch (searcher:Search.ISearch) (text, page) next (ctx:HttpContext) 
     task {
         let! properties = searcher.GenericSearch request
         return! FableJson.serialize properties next ctx }
+
 let webApp searcher : HttpHandler =
     choose [
         GET >=>
             choose [
                 routef "/property/find/%s/%i" (genericSearch searcher)
+                routef "/property/find-suggestion/%s" (searchSuggest searcher)
                 routef "/property/%s/%i/%i" (searchProperties searcher)
                 routef "/property/%s/%i" (fun (postcode, distance) -> searchProperties searcher (postcode, distance, 0))
             ]

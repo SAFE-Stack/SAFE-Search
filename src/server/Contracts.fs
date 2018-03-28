@@ -81,3 +81,5 @@ type SearchResponse =
     TotalTransactions : int option
     Page : int
     Facets : Facets }
+type SuggestResponse =
+    { Suggestions : string array }

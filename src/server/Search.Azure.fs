@@ -167,3 +167,6 @@ let findByPostcode config tryGetGeo request = task {
                 |> doSearch config request.Page None }
         | None -> Task.FromResult ((fun _ -> []), [||], None)
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
+
+let suggest request = task {
+    return { Suggestions = [| request.Text + " implement azure search suggestions" |] } }
