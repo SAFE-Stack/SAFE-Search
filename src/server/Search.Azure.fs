@@ -26,6 +26,8 @@ type SearchableProperty =
       [<IsFacetable; IsFilterable; IsSearchable>] County : string
       [<IsFilterable>] Geo : GeographyPoint }
 
+let suggesterName = "suggester"
+
 [<AutoOpen>]
 module Management =
     open System.Collections.Generic
@@ -44,7 +46,9 @@ module Management =
     let initialize config =
         let client = searchClient config
         if (client.Indexes.Exists "properties") then client.Indexes.Delete "properties"
-        client.Indexes.Create(Index(Name = "properties", Fields = FieldBuilder.BuildForType<SearchableProperty>())) |> ignore
+        let suggester = Suggester(Name = suggesterName, SourceFields = [| "Street"; "Locality"; "Town"; "District"; "County" |])
+        Index(Name = "properties", Fields = FieldBuilder.BuildForType<SearchableProperty>(), Suggesters = [| suggester |])
+        |> client.Indexes.Create
 
 [<AutoOpen>]
 module QueryBuilder =
@@ -168,5 +172,7 @@ let findByPostcode config tryGetGeo request = task {
         | None -> Task.FromResult ((fun _ -> []), [||], None)
     return searchResults |> toFindPropertiesResponse findFacet count request.Page }
 
-let suggest request = task {
-    return { Suggestions = [| request.Text + " implement azure search suggestions" |] } }
+let suggest config request = task {
+    let index = propertiesIndex config
+    let! result = index.Documents.SuggestAsync(request.Text, suggesterName, SuggestParameters(Top = Nullable(10)))
+    return { Suggestions = result.Results |> Seq.map (fun x -> x.Text) |> Seq.distinct |> Seq.toArray } }

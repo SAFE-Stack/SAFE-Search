@@ -38,7 +38,7 @@ let createSearch config =
         { new Search.ISearch with
             member __.GenericSearch request = Search.Azure.findGeneric config request
             member __.PostcodeSearch request = Search.Azure.findByPostcode config AzureStorage.tryGetGeo request
-            member __.Suggest request = Search.Azure.suggest request }
+            member __.Suggest request = Search.Azure.suggest config request }
 
 let configureApp searcher (app : IApplicationBuilder) =
     app.UseCors(configureCors)

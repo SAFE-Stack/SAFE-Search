@@ -218,7 +218,7 @@ let update msg model : Model * Cmd<Msg> =
         let cmd = cmd (fun response -> SearchCompleted(term, response)) SearchError
         { model with Status = Searching; LastSearch = term; Parameters = parameters; Suggestions = emptySuggestions }, cmd
     let setSearchToSuggestion model i =
-        let suggestion = model.Suggestions.SuggestedTerms |> Array.tryItem i |> Option.defaultValue ""
+        let suggestion = model.Suggestions.SuggestedTerms |> Array.tryItem i |> Option.defaultValue "" |> sprintf "\"%s\""
         setSearchValue suggestion
         { model with Suggestions = emptySuggestions }, Cmd.ofMsg (SetSearch suggestion)
     match msg with
