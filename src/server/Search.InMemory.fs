@@ -2,6 +2,7 @@ module PropertyMapper.Search.InMemory
 
 open PropertyMapper.Contracts
 open Giraffe.Tasks
+open System.Text.RegularExpressions
 
 let private data = lazy ("properties.json" |> System.IO.File.ReadAllText |> FableJson.ofJson)
 
@@ -73,3 +74,21 @@ let findGeneric (request:FindGenericRequest) = task {
               Counties = matches |> getFacets (fun m -> Some m.Address.County)
               Prices = [] } }
     }
+
+let suggest request = task {
+    let terms = Regex.Split(request.Text.ToLower(), "\s+") |> Array.filter ((<>) "") |> Array.distinct
+    let termMatch (s:string) = terms |> Array.exists (fun t -> s.ToLower().Contains t)
+    let suggestions =
+        data.Value
+        |> Seq.collect (fun x ->
+            let add = x.Address
+            [| add.FirstLine
+               add.Locality |> Option.defaultValue ""
+               add.TownCity
+               add.District
+               add.County
+               add.PostCode |> Option.defaultValue "" |]
+            |> Array.filter termMatch)
+        |> Seq.truncate 20
+        |> Seq.toArray
+    return { Suggestions = suggestions } }

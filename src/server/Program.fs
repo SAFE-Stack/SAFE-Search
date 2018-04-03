@@ -32,11 +32,13 @@ let createSearch config =
     | _ when String.IsNullOrWhiteSpace config.AzureSearchServiceName ->
         { new Search.ISearch with
             member __.GenericSearch request = Search.InMemory.findGeneric request
-            member __.PostcodeSearch request = Search.InMemory.findByPostcode request }
+            member __.PostcodeSearch request = Search.InMemory.findByPostcode request
+            member __.Suggest request = Search.InMemory.suggest request }
     | config ->
         { new Search.ISearch with
             member __.GenericSearch request = Search.Azure.findGeneric config request
-            member __.PostcodeSearch request = Search.Azure.findByPostcode config AzureStorage.tryGetGeo request }
+            member __.PostcodeSearch request = Search.Azure.findByPostcode config AzureStorage.tryGetGeo request
+            member __.Suggest request = Search.Azure.suggest config request }
 
 let configureApp searcher (app : IApplicationBuilder) =
     app.UseCors(configureCors)
