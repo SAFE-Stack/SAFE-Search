@@ -18,6 +18,7 @@ nuget Fable.Elmish.React
 nuget Fable.Elmish.HMR
 clitool Microsoft.DotNet.Watcher.Tools
 clitool dotnet-fable
+github CompositionalIT/fshelpers src/FsHelpers/Elmish.Debounce/Elmish.Debounce.fs
 
 group Build
 generate_load_scripts: true

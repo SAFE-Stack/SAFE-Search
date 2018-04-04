@@ -1251,6 +1251,10 @@ NUGET
       Newtonsoft.Json (>= 6.0.8) - restriction: || (>= net45) (&& (< netstandard1.0) (>= win8)) (>= wp8) (>= wpa81)
       Newtonsoft.Json (>= 9.0.1) - restriction: || (&& (< net45) (>= netstandard1.0) (< netstandard1.3) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard1.3) (< win8) (< wpa81))
       System.Spatial (>= 5.8.2) - restriction: || (&& (< net45) (>= netstandard1.0) (< netstandard1.3) (< win8) (< wp8) (< wpa81)) (&& (< net45) (>= netstandard1.3) (< win8) (< wpa81))
+GITHUB
+  remote: CompositionalIT/fshelpers
+    src/FsHelpers/Elmish.Debounce/Elmish.Debounce.fs (0809a585fcedb4a7666baa7a863a2986a1701215)
+      Fable.Elmish
 
 GROUP Build
 GENERATE-LOAD-SCRIPTS: ON

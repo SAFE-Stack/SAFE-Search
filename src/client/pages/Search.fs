@@ -7,7 +7,6 @@ open Fable.Helpers.React.Props
 open Fable.PowerPack
 open PropertyMapper.Contracts
 open System
-open System.Text.RegularExpressions
 open Client.Style
 open Fable.Import
 
@@ -16,9 +15,9 @@ type SearchState = Searching | Displaying
 type SearchParameters = { Facet : (string * string) option; Page : int; Sort : (PropertyTableColumn * SortDirection) option }
 type SearchResults = { SearchTerm : SearchTerm; Response : SearchResponse }
 type Suggestions = { SuggestedTerms : string array; SelectedSuggestion : int option; Show : bool }
-
 type Model =
-    { Text : SearchTerm
+    { Term : SearchTerm
+      DebouncedTerm : Debounce.Model<SearchTerm>
       Suggestions: Suggestions
       LastSearch : SearchTerm
       Status : SearchState
@@ -39,13 +38,15 @@ type Msg =
     | ShowSuggestions of bool
     | SelectSuggestionOffset of offset:int
     | SelectSuggestion of index:int
-    | FetchSuggestions
+    | FetchSuggestions of SearchTerm
     | ReceiveSuggestions of string array
+    | DebounceSearchTermMsg of Debounce.Msg<SearchTerm>
 
 let emptySuggestions = { SuggestedTerms = [| |]; SelectedSuggestion = None; Show = false }
 
 let init _ =
-    { Text = SearchTerm.Empty
+    { Term = SearchTerm.Empty
+      DebouncedTerm = Debounce.init (TimeSpan.FromMilliseconds 300.) SearchTerm.Empty
       Suggestions = emptySuggestions
       LastSearch = SearchTerm.Empty
       Status = SearchState.Displaying
@@ -173,7 +174,7 @@ let view model dispatch =
                         [ str <| sprintf "Searching for '%s'..." model.LastSearch.Description ]
                 ]
             ]
-            button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Text)) ] [ str "Search!" ] ]
+            button [ ClassName "btn btn-primary"; OnClick (fun _ -> dispatch (DoSearch model.Term)) ] [ str "Search!" ] ]
         viewResults model.SearchResults model.Parameters.Sort dispatch ]
 
 let queryString parameters =
@@ -195,7 +196,7 @@ let findByPostcode (postCode, page, parameters) =
 
 let fetchSuggestions text =
     match text with
-    | Term text when not (String.IsNullOrWhiteSpace text) ->
+    | Term text when not (String.IsNullOrWhiteSpace text) && text.Trim().Length >= 3 ->
         Fetch.fetchAs<SuggestResponse> (sprintf "%s/property/find-suggestion/%s" host text) []
     | Term _ | PostcodeSearch _ -> promise { return { Suggestions = [||] } }
 
@@ -222,13 +223,22 @@ let update msg model : Model * Cmd<Msg> =
         setSearchValue suggestion
         { model with Suggestions = emptySuggestions }, Cmd.ofMsg (SetSearch suggestion)
     match msg with
-    | SetSearch text -> { model with Text = Term text }, Cmd.ofMsg FetchSuggestions
+    | SetSearch text ->
+        let term = Term text
+        { model with Term = term }, Debounce.inputCmd term DebounceSearchTermMsg
+    | DebounceSearchTermMsg msg ->
+        Debounce.updateWithCmd
+            msg
+            DebounceSearchTermMsg
+            model.DebouncedTerm
+            (fun x -> { model with DebouncedTerm = x })
+            (FetchSuggestions >> Cmd.ofMsg)
     | DoSearch (Term text) when String.IsNullOrWhiteSpace text || text.Length <= 3 -> model, Cmd.none
     | DoSearch term -> initiateSearch model term { Facet = None; Page = 0; Sort = None }
     | SearchBoxEnter ->
         match model.Suggestions.SelectedSuggestion with
         | Some i -> setSearchToSuggestion model i
-        | None -> model, Cmd.ofMsg (DoSearch model.Text)
+        | None -> model, Cmd.ofMsg (DoSearch model.Term)
     | SetFilter (facet, value) -> initiateSearch model model.LastSearch { model.Parameters with Facet = Some(facet, value) }
     | SetSort sort -> initiateSearch model model.LastSearch { model.Parameters with Sort = sort }
     | ChangePage page -> initiateSearch model model.LastSearch { model.Parameters with Page = page }
@@ -242,6 +252,5 @@ let update msg model : Model * Cmd<Msg> =
     | ShowSuggestions b -> { model with Suggestions = { model.Suggestions with Show = b } }, Cmd.none
     | SelectSuggestionOffset offset -> { model with Suggestions = updateSelectedSuggestion offset model.Suggestions }, Cmd.none
     | SelectSuggestion i -> setSearchToSuggestion model i
-    | FetchSuggestions -> model, Cmd.ofPromise fetchSuggestions model.Text (fun r -> ReceiveSuggestions r.Suggestions) (fun _ -> ReceiveSuggestions [||])
+    | FetchSuggestions text -> model, Cmd.ofPromise fetchSuggestions text (fun r -> ReceiveSuggestions r.Suggestions) (fun _ -> ReceiveSuggestions [||])
     | ReceiveSuggestions sugs -> { model with Suggestions = { model.Suggestions with SuggestedTerms = sugs; SelectedSuggestion = None } }, Cmd.none
-

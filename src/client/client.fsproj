@@ -3,6 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\paket-files\CompositionalIT\fshelpers\src\FsHelpers\Elmish.Debounce\Elmish.Debounce.fs" Link="Elmish.Debounce.fs" />
     <Compile Include="Style.fs" />
     <Compile Include="../server/Contracts.fs" />
     <Compile Include="pages/Shared.fs" />
@@ -10,6 +11,9 @@
     <Compile Include="pages/Filter.fs" />
     <Compile Include="pages/Search.fs" />
     <Compile Include="App.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="paket.references" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
