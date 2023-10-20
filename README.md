@@ -1,3 +1,7 @@
+# This repo is deprecated
+
+Please see https://github.com/CompositionalIT/safe-search-3 for a more recent sample.
+
 # houseprice-sales
 
 This is a SAFE F# project (Suave model, Azure, Fable, Elmish) designed to show integration of Azure Search and Storage within an Elmish application using Bootstrap.
